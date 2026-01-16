@@ -8,6 +8,7 @@ extension AppColors on Colors {
   static const blue06 = Color(0xFF0696BD);
   static const blue133 = Color(0xFF133F72);
   static const blueE9 = Color(0xFFE9F4FF);
+  static const blue0C = Color(0xFF0C83BB);
 
   static const white = Colors.white;
   static const black = Colors.black;

@@ -332,13 +332,11 @@ class _HomePageState extends State<HomePage> {
                         Row(
                           children: [
                             Container(
-                              width: 4,
-                              height: 16,
-                              color: AppColors.blue06),
+                                width: 4, height: 16, color: AppColors.blue06),
                             const SizedBox(width: 12),
                             Text(
                               '统计数据',
-                            ).simpleStyle(16,AppColors.blue06,isBold:  true)
+                            ).simpleStyle(16, AppColors.blue06, isBold: true)
                           ],
                         ),
                         const SizedBox(height: 14),
@@ -361,29 +359,41 @@ class _HomePageState extends State<HomePage> {
                         Row(
                           children: [
                             Container(
-                                width: 4,
-                                height: 16,
-                                color: AppColors.blue06),
+                                width: 4, height: 16, color: AppColors.blue06),
                             const SizedBox(width: 12),
                             Text(
                               '分类统计',
-                            ).simpleStyle(16,AppColors.blue06,isBold:  true),
-
+                            ).simpleStyle(16, AppColors.blue06, isBold: true),
                           ],
                         ),
                         SizedBox(height: 10),
-                        GridView.count(
-                          shrinkWrap: true, // ⭐关键
-                          physics: const NeverScrollableScrollPhysics(), // ⭐关键
-                          crossAxisCount: 2,
-                          crossAxisSpacing: 10,
-                          mainAxisSpacing: 10,
-                          children: [
-                            _statTile('正常状态', '22'),
-                            _statTile('结冰状态', '0'),
-                            _statTile('加热状态', '0'),
-                            _statTile('未知事件', '0'),
-                          ],
+                        Expanded(
+                          child: LayoutBuilder(
+                            builder: (context, cons) {
+                              const cross = 2;
+                              const rows = 2;
+                              const gap = 10.0;
+                              final itemW =
+                                  (cons.maxWidth - gap * (cross - 1)) / cross;
+                              final itemH =
+                                  (cons.maxHeight - gap * (rows - 1)) / rows;
+                              final ratio = itemW / itemH;
+                              return GridView.count(
+                                shrinkWrap: false,
+                                physics: const NeverScrollableScrollPhysics(),
+                                crossAxisCount: cross,
+                                crossAxisSpacing: gap,
+                                mainAxisSpacing: gap,
+                                childAspectRatio: ratio,
+                                children: [
+                                  _statTile( '22','ic_right.png','正常状态'),
+                                  _statTile('0','ic_ice.png','结冰状态'),
+                                  _statTile( '0','ic_warm.png','加热状态'),
+                                  _statTile('0','ic_unkown.png','未知事件'),
+                                ],
+                              );
+                            },
+                          ),
                         ),
                       ],
                     ),
@@ -410,22 +420,32 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _statTile(String title, String count) {
+  Widget _statTile(String num, String path,String state) {
     return Container(
-      decoration: AppDecorations.panel(),
+      decoration:BoxDecoration(
+        color: HexColor('#C1D8F0'),
+        borderRadius: BorderRadius.circular(6),
+      ),
       padding: EdgeInsets.all(AppScreen.adaptiveFontSize(context, 12)),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(count,
+          Text(num,
               style: TextStyle(
-                  fontSize: AppScreen.adaptiveFontSize(context, 24),
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.blue135)),
-          SizedBox(height: AppScreen.adaptiveFontSize(context, 4)),
-          Text(title,
-              style:
-                  TextStyle(fontSize: AppScreen.adaptiveFontSize(context, 14))),
+                  fontSize: AppScreen.adaptiveFontSize(context, 30),
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.blue0C)),
+          SizedBox(height: AppScreen.adaptiveFontSize(context, 8)),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Image.asset(path.imagePath,width: 18,height: 18),
+              const SizedBox(width: 4),
+              Text(state,
+                  style:
+                      TextStyle(fontSize: AppScreen.adaptiveFontSize(context, 14))),
+            ],
+          ),
         ],
       ),
     );
