@@ -1,0 +1,83 @@
+name: wind_power_system
+description: "Wind Power Monitoring System"
+# The following line prevents the package from being accidentally published to
+# pub.dev using `flutter pub publish`. This is preferred for private packages.
+publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+
+# The following defines the version and build number for your application.
+# A version number is three numbers separated by dots, like 1.2.43
+# followed by an optional build number separated by a +.
+# Both the version and the builder number may be overridden in flutter
+# build by specifying --build-name and --build-number, respectively.
+# In Android, build-name is used as versionName while build-number used as versionCode.
+# Read more about Android versioning at https://developer.android.com/studio/publish/versioning
+# In iOS, build-name is used as CFBundleShortVersionString while build-number is used as CFBundleVersion.
+# Read more about iOS versioning at
+# https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
+# In Windows, build-name is used as the major, minor, and patch parts
+# of the product and file versions while build-number is used as the build suffix.
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.4.4 <4.0.0'
+
+# Dependencies specify other packages that your package needs in order to work.
+# To automatically upgrade your package dependencies to the latest versions
+# consider running `flutter pub upgrade --major-versions`. Alternatively,
+# dependencies can be manually updated by changing the version numbers below to
+# the latest version available on pub.dev. To see which dependencies have newer
+# versions available, run `flutter pub outdated`.
+dependencies:
+  flutter:
+    sdk: flutter
+
+
+  cupertino_icons: ^1.0.6
+  syncfusion_flutter_charts: ^25.1.42
+  pluto_grid: ^8.0.0
+  printing: ^5.12.0
+  pdf: ^3.10.7
+  path_provider: ^2.1.2
+  web_socket_channel: ^2.4.0
+  dio: ^5.7.0             # 网络请求
+  json_annotation: ^4.8.1   # json序列化
+  sprintf: ^7.0.0 # String格式化
+  crypto: ^3.0.3        # sha、md5加密算法
+  encrypt: ^5.0.3       # aes、rsa加密算法
+  pointycastle: ^3.7.4
+  fluttertoast: ^8.2.4  # 弹窗工具
+  sqflite_common_ffi: ^2.3.2
+  window_manager: ^0.3.6
+  drift: ^2.0.0
+  sqlite3_flutter_libs: ^0.5.0
+  build_runner: ^2.4.11
+  path: ^1.9.0
+
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^3.0.0
+  drift_dev: ^2.18.0
+  build_runner: ^2.4.11
+
+flutter:
+
+
+  uses-material-design: true
+
+  assets:
+    - lib/images/
+    - lib/resources/webp/
+    - lib/resources/json/
+
+  fonts:
+    - family: YouSheBiaoTiHei
+      fonts:
+        - asset: lib/resources/ttf/YouSheBiaoTiHei.ttf
+
+
+
+
+
