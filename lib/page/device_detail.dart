@@ -23,8 +23,8 @@ class DeviceDetailPage extends StatefulWidget {
 }
 
 class _DeviceDetailPageState extends State<DeviceDetailPage> {
-
   final TextEditingController _fzController = TextEditingController();
+  double _heatingMinutes = 10;
 
   Widget _title(String text) {
     return Row(
@@ -109,36 +109,62 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
     );
   }
 
+  // 叶子状态
   Widget _leafStatus(String name) {
-    return LayoutBuilder(builder: (context, cons) {
-      const gap = 12.0;
-      const heatingW = 180.0;
-      const leafW = 270.0; // 叶根/叶中/叶尖各270
-      final gapsW = gap * 4; // 标题-加热、加热-叶根、叶根-叶中、叶中-叶尖
-      final fixedW = heatingW + leafW * 3 + gapsW;
-      double titleW = cons.maxWidth - fixedW;
-      if (titleW < 100) titleW = 100;
-
-      return Row(
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.blueE9,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row (
         children: [
-          SizedBox(
-            width: titleW,
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text(name).simpleStyle(14, AppColors.blue06, isBold: true),
-            ),
-          ),
-          const SizedBox(width: gap),
-          SizedBox(width: heatingW, child: _heatingStateCard()),
-          const SizedBox(width: gap),
-          SizedBox(width: leafW, child: _leafGroup('叶根')),
-          const SizedBox(width: gap),
-          SizedBox(width: leafW, child: _leafGroup('叶中')),
-          const SizedBox(width: gap),
-          SizedBox(width: leafW, child: _leafGroup('叶尖')),
+          SizedBox(width: 12),
+          Text(name).simpleStyle(14, AppColors.blue06, isBold: true),
+          SizedBox(width: 12),
+          Expanded(child: Column(
+
+            children: [
+              Container(
+                decoration: BoxDecoration(
+                  color: AppColors.white,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 10.0),
+                  child: Row(
+                    children: [
+                      Image.asset('ic_unselect.png'.imagePath, width: 12, height: 12),
+                      const SizedBox(width: 8),
+                      Text('加热状态').simpleStyle(14, HexColor('#051F34')),
+                    ]
+                  ),
+                )
+              ),
+              SizedBox(height: 8),
+              Container(
+                  decoration: BoxDecoration(
+                    color: HexColor('#C1D8F0'),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 10.0),
+                    child: Row(
+                        children: [
+                          Text('功率：').simpleStyle(14, HexColor('#051F34')),
+                          Spacer(),
+                          Text('10').simpleStyle(12, AppColors.blue06, isBold: true),
+                          Text('kw').simpleStyle(12, AppColors.blue133),
+                        ]
+                    ),
+                  )
+              )
+            ],
+          ))
         ],
-      );
-    });
+      ),
+    );
   }
 
   Widget _heatingStateCard() {
@@ -280,7 +306,7 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
   void initState() {
     // TODO: implement initState
     super.initState();
-    _fzController.text =  '';
+    _fzController.text = '';
   }
 
   @override
@@ -289,6 +315,7 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
     super.dispose();
     _fzController.dispose();
   }
+
   @override
   Widget build(BuildContext context) {
     final textMain = TextStyle(
@@ -376,40 +403,54 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text('设备编号：00009527').simpleStyle(13, AppColors.blue133),
+                                    Text('设备编号：00009527')
+                                        .simpleStyle(13, AppColors.blue133),
                                     SizedBox(height: 8),
                                     Expanded(
                                       child: Container(
                                         decoration: BoxDecoration(
                                             color: AppColors.blueE9,
-                                            borderRadius: BorderRadius.circular(6)),
+                                            borderRadius:
+                                                BorderRadius.circular(6)),
                                         alignment: Alignment.center,
                                         child: Column(
-                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
                                           children: [
-                                            Text('除冰状态').simpleStyle(14, AppColors.blue133,isBold: true),
+                                            Text('除冰状态').simpleStyle(
+                                                14, AppColors.blue133,
+                                                isBold: true),
                                             const SizedBox(height: 20),
-                                            Row (
-                                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                                              children: [
-                                                Row(
-                                                  children: [
-                                                    Image.asset('ic_select.png'.imagePath,
-                                                        width: 20, height: 20),
-                                                    SizedBox(width: 10),
-                                                    Text('手动').simpleStyle(14, HexColor('#051F34')),
-                                                  ],
-                                                ),
-                                                Row(
-                                                  children: [
-                                                    Image.asset('ic_unselect.png'.imagePath,
-                                                        width: 20, height: 20),
-                                                    SizedBox(width: 10),
-                                                    Text('自动').simpleStyle(14, HexColor('#051F34')),
-                                                  ],
-                                                )
-                                              ]
-                                            ),
+                                            Row(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment
+                                                        .spaceEvenly,
+                                                children: [
+                                                  Row(
+                                                    children: [
+                                                      Image.asset(
+                                                          'ic_select.png'
+                                                              .imagePath,
+                                                          width: 20,
+                                                          height: 20),
+                                                      SizedBox(width: 10),
+                                                      Text('手动').simpleStyle(14,
+                                                          HexColor('#051F34')),
+                                                    ],
+                                                  ),
+                                                  Row(
+                                                    children: [
+                                                      Image.asset(
+                                                          'ic_unselect.png'
+                                                              .imagePath,
+                                                          width: 20,
+                                                          height: 20),
+                                                      SizedBox(width: 10),
+                                                      Text('自动').simpleStyle(14,
+                                                          HexColor('#051F34')),
+                                                    ],
+                                                  )
+                                                ]),
                                           ],
                                         ),
                                       ),
@@ -420,60 +461,73 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
                               const SizedBox(width: 12),
                               Expanded(
                                 child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.center,
-                                  children: [
-                                    Image.asset('ic_jr.png'.imagePath,
-                                        width: 20, height: 20),
-                                    SizedBox(height: 8),
-                                    Text('加热状态').simpleStyle(13, AppColors.blue133,isBold: true),
-                                    SizedBox(height: 8),
-                                    Row (
-                                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                                      children: [
-                                        Column(
-                                          children: [
-                                            Image.asset('ic_unselect.png'.imagePath,
-                                                width: 20, height: 20),
-                                            const SizedBox(height: 8),
-                                            InkWell(
-                                              onTap: (){
-                                              },
-                                              child: Container(
-                                                width: 85,
-                                                height: 35,
-                                                decoration: BoxDecoration(
-                                                    color: AppColors.blue06,
-                                                    borderRadius: BorderRadius.circular(6)),
-                                                alignment: Alignment.center,
-                                                child: Text('急停').simpleStyle(14, AppColors.white,isBold: true),
-                                              ),
-                                            )
-                                          ],
-                                        ),
-                                        Column(
-                                          children: [
-                                            Image.asset('ic_unselect.png'.imagePath,
-                                                width: 20, height: 20),
-                                            const SizedBox(height: 8),
-                                            InkWell(
-                                              onTap: (){
-                                              },
-                                              child: Container(
-                                                width: 85,
-                                                height: 35,
-                                                decoration: BoxDecoration(
-                                                    color: AppColors.blue06,
-                                                    borderRadius: BorderRadius.circular(6)),
-                                                alignment: Alignment.center,
-                                                child: Text('复位').simpleStyle(14, AppColors.white,isBold: true),
-                                              ),
-                                            )
-                                          ],
-                                        ),
-                                      ],
-                                    )
-                                  ]
-                                ),
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.center,
+                                    children: [
+                                      Image.asset('ic_jr.png'.imagePath,
+                                          width: 20, height: 20),
+                                      SizedBox(height: 8),
+                                      Text('加热状态').simpleStyle(
+                                          13, AppColors.blue133,
+                                          isBold: true),
+                                      SizedBox(height: 8),
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceEvenly,
+                                        children: [
+                                          Column(
+                                            children: [
+                                              Image.asset(
+                                                  'ic_unselect.png'.imagePath,
+                                                  width: 20,
+                                                  height: 20),
+                                              const SizedBox(height: 8),
+                                              InkWell(
+                                                onTap: () {},
+                                                child: Container(
+                                                  width: 85,
+                                                  height: 35,
+                                                  decoration: BoxDecoration(
+                                                      color: AppColors.blue06,
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              6)),
+                                                  alignment: Alignment.center,
+                                                  child: Text('急停').simpleStyle(
+                                                      14, AppColors.white,
+                                                      isBold: true),
+                                                ),
+                                              )
+                                            ],
+                                          ),
+                                          Column(
+                                            children: [
+                                              Image.asset(
+                                                  'ic_unselect.png'.imagePath,
+                                                  width: 20,
+                                                  height: 20),
+                                              const SizedBox(height: 8),
+                                              InkWell(
+                                                onTap: () {},
+                                                child: Container(
+                                                  width: 85,
+                                                  height: 35,
+                                                  decoration: BoxDecoration(
+                                                      color: AppColors.blue06,
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              6)),
+                                                  alignment: Alignment.center,
+                                                  child: Text('复位').simpleStyle(
+                                                      14, AppColors.white,
+                                                      isBold: true),
+                                                ),
+                                              )
+                                            ],
+                                          ),
+                                        ],
+                                      )
+                                    ]),
                               ),
                             ],
                           ),
@@ -492,98 +546,141 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         _title('手动除冰参数设置'),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 18),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('加热开关').simpleStyle(12, AppColors.blue133,isBold: true),
-                              const SizedBox(height: 6),
-                              Row (
+                              Row(
                                   mainAxisAlignment: MainAxisAlignment.start,
                                   children: [
+                                    Text('加热开关').simpleStyle(
+                                        14, AppColors.blue133,
+                                        isBold: true),
+                                    const SizedBox(width: 18),
                                     Row(
                                       children: [
                                         Image.asset('ic_jr_kai.png'.imagePath,
                                             width: 12, height: 12),
                                         SizedBox(width: 2),
-                                        Text('开').simpleStyle(10, HexColor('#051F34')),
+                                        Text('开').simpleStyle(
+                                            12, HexColor('#051F34')),
                                       ],
                                     ),
-                                    SizedBox(width: 9),
+                                    SizedBox(width: 12),
                                     Row(
                                       children: [
                                         Image.asset('ic_jr_guan.png'.imagePath,
                                             width: 12, height: 12),
                                         SizedBox(width: 2),
-                                        Text('关').simpleStyle(10, HexColor('#051F34')),
+                                        Text('关').simpleStyle(
+                                            12, HexColor('#051F34')),
                                       ],
                                     ),
-
-                                  ]
-                              ),
-                              const SizedBox(height: 6),
-                              Text('加热时常').simpleStyle(12, AppColors.blue133,isBold: true),
-
-
-                              //进度条
-
-
+                                  ]),
                               Spacer(),
-                              Text('不平衡电流阈值').simpleStyle(12, AppColors.blue133,isBold: true),
-                              const SizedBox(height: 6),
+
                               Row(
                                 children: [
+                                  Text('加热时常').simpleStyle(14, AppColors.blue133,
+                                      isBold: true),
+                                  const SizedBox(width: 12),
                                   Expanded(
-                                    child: TextField(
-                                      controller: _fzController,
-                                      keyboardType: TextInputType.number,
-                                      maxLines: 1,
-                                      decoration: InputDecoration(
-                                        isDense: true,
-                                        counterText: '',
-                                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
-                                        focusedBorder: OutlineInputBorder(
-                                          borderRadius: const BorderRadius.all(
-                                              Radius.circular(8)),
-                                          borderSide: BorderSide(
-                                              color: HexColor('#E2E8F2'), width: 1),
+                                    child: SliderTheme(
+                                      data: SliderTheme.of(context).copyWith(
+                                        trackHeight: 3,
+                                        activeTrackColor: AppColors.blue06,
+                                        inactiveTrackColor: HexColor('#D9E5F2'),
+                                        thumbColor: AppColors.blue06,
+                                        overlayColor: Colors.transparent,
+                                        overlayShape: const RoundSliderOverlayShape(
+                                            overlayRadius: 0),
+                                        thumbShape: const RoundSliderThumbShape(
+                                          enabledThumbRadius: 8,
+                                          disabledThumbRadius: 8,
+                                          elevation: 0,
+                                          pressedElevation: 0,
                                         ),
-                                        enabledBorder: OutlineInputBorder(
-                                          borderRadius: const BorderRadius.all(
-                                              Radius.circular(8)),
-                                          borderSide: BorderSide(
-                                              color: HexColor('#E2E8F2'), width: 1),
-                                        ),
-
-                                        //,
-                                        hintText: '请输入阈值参数',
-                                        hintStyle: TextStyle(
-                                          color: HexColor('#888888'),
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.normal,
-                                        ),
+                                        valueIndicatorColor: AppColors.blue06,
+                                        showValueIndicator: ShowValueIndicator.always,
                                       ),
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.normal,
-                                        color: AppColors.blue133,
+                                      child: Slider(
+                                        value: _heatingMinutes,
+                                        min: 0,
+                                        max: 180,
+                                        divisions: 180,
+                                        label: '${_heatingMinutes.round()}分',
+                                        onChanged: (v) {
+                                          setState(() {
+                                            _heatingMinutes = v;
+                                          });
+                                        },
                                       ),
                                     ),
                                   ),
-                                  const SizedBox(width: 22),
-                                  Container(
-                                    width: 85,
-                                    height: 35,
-                                    decoration: BoxDecoration(
-                                        color: AppColors.blue06,
-                                        borderRadius: BorderRadius.circular(6)),
-                                    alignment: Alignment.center,
-                                    child: Text('确认').simpleStyle(14, AppColors.white,isBold: true),
-                                  )
                                 ]
-                              )
+                              ),
 
+
+                              Spacer(),
+                              Text('不平衡电流阈值').simpleStyle(14, AppColors.blue133,
+                                  isBold: true),
+                              const SizedBox(height: 10),
+                              Row(children: [
+                                Expanded(
+                                  child: TextField(
+                                    controller: _fzController,
+                                    keyboardType: TextInputType.number,
+                                    maxLines: 1,
+                                    decoration: InputDecoration(
+                                      isDense: true,
+                                      counterText: '',
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                              horizontal: 12, vertical: 13),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderRadius: const BorderRadius.all(
+                                            Radius.circular(8)),
+                                        borderSide: BorderSide(
+                                            color: HexColor('#E2E8F2'),
+                                            width: 1),
+                                      ),
+                                      enabledBorder: OutlineInputBorder(
+                                        borderRadius: const BorderRadius.all(
+                                            Radius.circular(8)),
+                                        borderSide: BorderSide(
+                                            color: HexColor('#E2E8F2'),
+                                            width: 1),
+                                      ),
+
+                                      //,
+                                      hintText: '请输入阈值参数',
+                                      hintStyle: TextStyle(
+                                        color: HexColor('#888888'),
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.normal,
+                                      ),
+                                    ),
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.normal,
+                                      color: AppColors.blue133,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 22),
+                                Container(
+                                  width: 85,
+                                  height: 35,
+                                  decoration: BoxDecoration(
+                                      color: AppColors.blue06,
+                                      borderRadius: BorderRadius.circular(6)),
+                                  alignment: Alignment.center,
+                                  child: Text('确认').simpleStyle(
+                                      14, AppColors.white,
+                                      isBold: true),
+                                )
+                              ])
                             ],
                           ),
                         ),
@@ -606,7 +703,7 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
                           child: LayoutBuilder(builder: (context, cons) {
                             const cross = 2;
                             const rows = 4;
-                            const gap = 12.0;
+                            const gap = 8.0;
                             final itemW =
                                 (cons.maxWidth - gap * (cross - 1)) / cross;
                             final itemH =
@@ -632,23 +729,21 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
                               children: tiles
                                   .map((t) => Container(
                                         decoration: BoxDecoration(
-                                          color: HexColor('#C1D8F0'),
+                                          color: AppColors.blueE9,
                                           borderRadius:
-                                              BorderRadius.circular(6),
+                                              BorderRadius.circular(3),
                                         ),
-                                        padding: EdgeInsets.all(
-                                            AppScreen.adaptiveFontSize(
-                                                context, 12)),
                                         child: Row(
                                           children: [
+                                            const SizedBox(width: 12),
                                             Image.asset(
-                                                'ic_right.png'.imagePath,
-                                                width: 18,
-                                                height: 18),
+                                                'ic_jr.png'.imagePath,
+                                                width: 12,
+                                                height: 12),
                                             const SizedBox(width: 6),
                                             Expanded(
                                                 child: Text(t).simpleStyle(
-                                                    14, AppColors.blue133)),
+                                                    10, AppColors.blue133)),
                                           ],
                                         ),
                                       ))
@@ -706,60 +801,6 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
                         Expanded(
                           flex: 120,
                           child: _leafStatus('3号叶片状态'),
-                        ),
-                        const SizedBox(height: 12),
-                        Expanded(
-                          flex: 120,
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                      color: HexColor('#C1D8F0'),
-                                      borderRadius: BorderRadius.circular(6)),
-                                  alignment: Alignment.center,
-                                  child: Text('加热统计')
-                                      .simpleStyle(16, AppColors.blue133),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                      color: HexColor('#C1D8F0'),
-                                      borderRadius: BorderRadius.circular(6)),
-                                  alignment: Alignment.center,
-                                  child: Text('异常统计')
-                                      .simpleStyle(16, AppColors.blue133),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                      color: HexColor('#C1D8F0'),
-                                      borderRadius: BorderRadius.circular(6)),
-                                  alignment: Alignment.center,
-                                  child: Text('其他')
-                                      .simpleStyle(16, AppColors.blue133),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Expanded(
-                          flex: 20,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: HexColor('#C1D8F0'),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            alignment: Alignment.centerLeft,
-                            padding: const EdgeInsets.symmetric(horizontal: 12),
-                            child:
-                                Text('说明').simpleStyle(14, AppColors.blue133),
-                          ),
                         ),
                       ],
                     ),
