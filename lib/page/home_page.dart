@@ -15,6 +15,8 @@ import 'package:wind_power_system/core/style/app_colors.dart';
 import 'package:wind_power_system/genernal/extension/string.dart';
 import 'package:wind_power_system/genernal/extension/text.dart';
 
+import '../content_navigator.dart';
+
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
 
@@ -179,6 +181,16 @@ class _HomePageState extends State<HomePage> {
               padding: EdgeInsets.all(16),
               child: Column(
                 children: [
+                  Row(
+                    children: [
+                      InkWell(child: Image.asset('btn_login.png'.imagePath,width: 90,height: 42),onTap: (){
+
+                      },),
+                      InkWell(child: Image.asset('btn_register.png'.imagePath,width: 90,height: 42),onTap: (){
+
+                      },),
+                    ],
+                  ),
                   Expanded(
                     child: GridView.builder(
                       padding: const EdgeInsets.only(bottom: 180),
@@ -204,108 +216,117 @@ class _HomePageState extends State<HomePage> {
                             setState(() => hoverIndex = null);
                             _hideTooltip();
                           },
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: HexColor('#C1D8F0'),
-                              borderRadius: BorderRadius.circular(5),
-                            ),
-                            padding: const EdgeInsets.all(10),
-                            child: IntrinsicHeight(
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  AspectRatio(
-                                    aspectRatio: 1, // 正方形
-                                    child: Image.asset(
-                                      'ic_fc.png'.imagePath,
-                                      fit: BoxFit.cover, // 铺满
+                          child: InkWell(
+                            onTap: (){
+                              //跳转到详情
+                              ContentNavigator.navigatorKey.currentState!.pushNamed(
+                                '/detail',
+                                arguments: 'sn123454',
+                              );
+                            },
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: HexColor('#C1D8F0'),
+                                borderRadius: BorderRadius.circular(5),
+                              ),
+                              padding: const EdgeInsets.all(10),
+                              child: IntrinsicHeight(
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                  children: [
+                                    AspectRatio(
+                                      aspectRatio: 1, // 正方形
+                                      child: Image.asset(
+                                        'ic_fc.png'.imagePath,
+                                        fit: BoxFit.cover, // 铺满
+                                      ),
                                     ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Row(
-                                      children: [
-                                        Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              it.name,
-                                              style: textMain,
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                            Spacer(),
-                                            Text('冰层等级', style: textSub),
-                                            const SizedBox(height: 2),
-                                            Text(
-                                              '45',
-                                              style: textCon,
-                                            ),
-                                          ],
-                                        ),
-                                        Expanded(
-                                          child: Column(
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Row(
+                                        children: [
+                                          Column(
                                             crossAxisAlignment:
                                                 CrossAxisAlignment.start,
                                             children: [
-                                              Row(
-                                                children: [
-                                                  Image.asset(
-                                                    'ic_right.png'.imagePath,
-                                                    width: 15,
-                                                    height: 15,
-                                                  ),
-                                                  const SizedBox(
-                                                    width: 2,
-                                                  ),
-                                                  Text(
-                                                    '电网限功率运行',
-                                                    style: textSub,
-                                                    maxLines: 1,
-                                                    overflow:
-                                                        TextOverflow.ellipsis,
-                                                  ),
-                                                ],
+                                              Text(
+                                                it.name,
+                                                style: textMain,
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
                                               ),
                                               Spacer(),
-                                              Padding(
-                                                padding: const EdgeInsets.only(
-                                                    left: 17),
-                                                child: Text('加热功率',
-                                                    style: textSub),
-                                              ),
+                                              Text('冰层等级', style: textSub),
                                               const SizedBox(height: 2),
-                                              Padding(
-                                                padding: const EdgeInsets.only(
-                                                    left: 17),
-                                                child: Row(
+                                              Text(
+                                                '45',
+                                                style: textCon,
+                                              ),
+                                            ],
+                                          ),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Row(
                                                   children: [
-                                                    Text(
-                                                      '960',
-                                                      style: textCon,
+                                                    Image.asset(
+                                                      'ic_right.png'.imagePath,
+                                                      width: 15,
+                                                      height: 15,
                                                     ),
                                                     const SizedBox(
                                                       width: 2,
                                                     ),
                                                     Text(
-                                                      'kw',
-                                                      style: TextStyle(
-                                                        fontSize: 12,
-                                                        color:
-                                                            HexColor('#133F72'),
-                                                      ),
+                                                      '电网限功率运行',
+                                                      style: textSub,
+                                                      maxLines: 1,
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
                                                     ),
                                                   ],
                                                 ),
-                                              ),
-                                            ],
+                                                Spacer(),
+                                                Padding(
+                                                  padding: const EdgeInsets.only(
+                                                      left: 17),
+                                                  child: Text('加热功率',
+                                                      style: textSub),
+                                                ),
+                                                const SizedBox(height: 2),
+                                                Padding(
+                                                  padding: const EdgeInsets.only(
+                                                      left: 17),
+                                                  child: Row(
+                                                    children: [
+                                                      Text(
+                                                        '960',
+                                                        style: textCon,
+                                                      ),
+                                                      const SizedBox(
+                                                        width: 2,
+                                                      ),
+                                                      Text(
+                                                        'kw',
+                                                        style: TextStyle(
+                                                          fontSize: 12,
+                                                          color:
+                                                              HexColor('#133F72'),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
                                           ),
-                                        ),
-                                      ],
+                                        ],
+                                      ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
                             ),
                           ),

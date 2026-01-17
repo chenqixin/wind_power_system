@@ -72,7 +72,7 @@ class AppScreen extends AppConstant {
   }
 
   /// 顶部全局 Header 高度
-  static const double headerHeight = 73.0;
+  static const double headerHeight = 60.0;
 
   /// 物理像素比
   static double get devicePixelRatio {
