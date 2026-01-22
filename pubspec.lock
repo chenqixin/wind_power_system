@@ -233,6 +233,14 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "2.3.6"
+  dash_painter:
+    dependency: "direct main"
+    description:
+      name: dash_painter
+      sha256: e0b24070aed0549f9139ef1276ca70c155fe78960ec624d6dec3cdb0502f9a2a
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "1.0.2"
   dio:
     dependency: "direct main"
     description:

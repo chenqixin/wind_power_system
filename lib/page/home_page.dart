@@ -16,6 +16,7 @@ import 'package:wind_power_system/genernal/extension/string.dart';
 import 'package:wind_power_system/genernal/extension/text.dart';
 
 import '../content_navigator.dart';
+import 'add_user_dialog.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -183,12 +184,22 @@ class _HomePageState extends State<HomePage> {
                 children: [
                   Row(
                     children: [
-                      InkWell(child: Image.asset('btn_login.png'.imagePath,width: 90,height: 42),onTap: (){
+                      InkWell(
+                        child: Image.asset('btn_login.png'.imagePath,
+                            width: 90, height: 42),),
 
-                      },),
-                      InkWell(child: Image.asset('btn_register.png'.imagePath,width: 90,height: 42),onTap: (){
-
-                      },),
+                      InkWell(
+                        child: Image.asset('btn_register.png'.imagePath,
+                            width: 90, height: 42),
+                        onTap: () async {
+                          final res = await showDialog(
+                            context: context,
+                            barrierDismissible: true,
+                            builder: (_) => const AddUserDialog(),
+                          );
+                          if (res is Map<String, dynamic>) {}
+                        },
+                      ),
                     ],
                   ),
                   Expanded(
@@ -217,9 +228,10 @@ class _HomePageState extends State<HomePage> {
                             _hideTooltip();
                           },
                           child: InkWell(
-                            onTap: (){
+                            onTap: () {
                               //跳转到详情
-                              ContentNavigator.navigatorKey.currentState!.pushNamed(
+                              ContentNavigator.navigatorKey.currentState!
+                                  .pushNamed(
                                 '/detail',
                                 arguments: 'sn123454',
                               );
@@ -232,7 +244,8 @@ class _HomePageState extends State<HomePage> {
                               padding: const EdgeInsets.all(10),
                               child: IntrinsicHeight(
                                 child: Row(
-                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
                                   children: [
                                     AspectRatio(
                                       aspectRatio: 1, // 正方形
@@ -290,15 +303,17 @@ class _HomePageState extends State<HomePage> {
                                                 ),
                                                 Spacer(),
                                                 Padding(
-                                                  padding: const EdgeInsets.only(
-                                                      left: 17),
+                                                  padding:
+                                                      const EdgeInsets.only(
+                                                          left: 17),
                                                   child: Text('加热功率',
                                                       style: textSub),
                                                 ),
                                                 const SizedBox(height: 2),
                                                 Padding(
-                                                  padding: const EdgeInsets.only(
-                                                      left: 17),
+                                                  padding:
+                                                      const EdgeInsets.only(
+                                                          left: 17),
                                                   child: Row(
                                                     children: [
                                                       Text(
@@ -312,8 +327,8 @@ class _HomePageState extends State<HomePage> {
                                                         'kw',
                                                         style: TextStyle(
                                                           fontSize: 12,
-                                                          color:
-                                                              HexColor('#133F72'),
+                                                          color: HexColor(
+                                                              '#133F72'),
                                                         ),
                                                       ),
                                                     ],
@@ -407,10 +422,10 @@ class _HomePageState extends State<HomePage> {
                                 mainAxisSpacing: gap,
                                 childAspectRatio: ratio,
                                 children: [
-                                  _statTile( '22','ic_right.png','正常状态'),
-                                  _statTile('0','ic_ice.png','结冰状态'),
-                                  _statTile( '0','ic_warm.png','加热状态'),
-                                  _statTile('0','ic_unkown.png','未知事件'),
+                                  _statTile('22', 'ic_right.png', '正常状态'),
+                                  _statTile('0', 'ic_ice.png', '结冰状态'),
+                                  _statTile('0', 'ic_warm.png', '加热状态'),
+                                  _statTile('0', 'ic_unkown.png', '未知事件'),
                                 ],
                               );
                             },
@@ -441,9 +456,9 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _statTile(String num, String path,String state) {
+  Widget _statTile(String num, String path, String state) {
     return Container(
-      decoration:BoxDecoration(
+      decoration: BoxDecoration(
         color: HexColor('#C1D8F0'),
         borderRadius: BorderRadius.circular(6),
       ),
@@ -460,11 +475,11 @@ class _HomePageState extends State<HomePage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Image.asset(path.imagePath,width: 18,height: 18),
+              Image.asset(path.imagePath, width: 18, height: 18),
               const SizedBox(width: 4),
               Text(state,
-                  style:
-                      TextStyle(fontSize: AppScreen.adaptiveFontSize(context, 14))),
+                  style: TextStyle(
+                      fontSize: AppScreen.adaptiveFontSize(context, 14))),
             ],
           ),
         ],
