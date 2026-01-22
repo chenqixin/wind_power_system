@@ -121,23 +121,21 @@ class _AddUserDialogState extends State<AddUserDialog> {
               label: '姓名：',
               labelStyle: labelStyle,
               child: _inputField(
-                controller: _realNameController,
-                hintText: '请输入姓名',
-                hintStyle: hintStyle,
-                textStyle: contentStyle
-              ),
+                  controller: _realNameController,
+                  hintText: '请输入姓名',
+                  hintStyle: hintStyle,
+                  textStyle: contentStyle),
             ),
             _formGroup(
               context,
               label: '手机号：',
               labelStyle: labelStyle,
               child: _inputField(
-                controller: _phoneController,
-                hintText: '请输入手机号',
-                hintStyle: hintStyle,
-                keyboardType: TextInputType.phone,
-                textStyle: contentStyle
-              ),
+                  controller: _phoneController,
+                  hintText: '请输入手机号',
+                  hintStyle: hintStyle,
+                  keyboardType: TextInputType.phone,
+                  textStyle: contentStyle),
             ),
             const SizedBox(height: 10),
             Row(
@@ -204,7 +202,7 @@ class _AddUserDialogState extends State<AddUserDialog> {
         hintStyle: hintStyle,
         isDense: true,
         contentPadding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 15),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(6)),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(6),
@@ -223,25 +221,51 @@ class _AddUserDialogState extends State<AddUserDialog> {
     required List<String> items,
     required ValueChanged<String?> onChanged,
   }) {
-    return DropdownButtonFormField<String>(
-      value: value,
-      items: items
-          .map((e) => DropdownMenuItem<String>(
-              value: e, child: Text(e).simpleStyle(14, AppColors.blue133)))
-          .toList(),
-      onChanged: onChanged,
-      decoration: InputDecoration(
-        isDense: true,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(6)),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(6),
-          borderSide: const BorderSide(color: Color(0xFFE6E6E6)),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(6),
-          borderSide: const BorderSide(color: Color(0xFF0696BD)),
+    return Theme(
+      data: Theme.of(context).copyWith(
+        highlightColor: AppColors.blueE9,
+        focusColor: AppColors.blueE9,
+        hoverColor: AppColors.blueE9.withOpacity(0.8),
+        splashColor: AppColors.blueE9,
+      ),
+      child: DropdownButtonFormField<String>(
+        value: value,
+        isExpanded: true,
+        dropdownColor: AppColors.white,
+        style: const TextStyle(
+            fontSize: 14, color: AppColors.blue133),
+        items: items
+            .map(
+              (e) => DropdownMenuItem<String>(
+                value: e,
+                child: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 0),
+                  child: Text(
+                    e,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: AppColors.blue133,
+                    ),
+                  ),
+                ),
+              ),
+            )
+            .toList(),
+        onChanged: onChanged,
+        decoration: InputDecoration(
+          isDense: false,
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(6)),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(6),
+            borderSide: const BorderSide(color: Color(0xFFE6E6E6)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(6),
+            borderSide: const BorderSide(color: Color(0xFF0696BD)),
+          ),
         ),
       ),
     );
