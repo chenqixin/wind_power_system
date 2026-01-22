@@ -141,24 +141,28 @@ class _AddUserDialogState extends State<AddUserDialog> {
             Row(
               children: [
                 Expanded(
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.of(context).pop({
-                        'username': _usernameController.text.trim(),
-                        'role': _role,
-                        'status': _status,
-                        'realName': _realNameController.text.trim(),
-                        'phone': _phoneController.text.trim(),
-                      });
-                    },
-                    child: const Text('确定'),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(4),
+                      color: HexColor('#0696BD'),
+                    ),
+                    child: Center(
+                      child: Text('确定').simpleStyle(12, HexColor('#F8FCFF')),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('取消'),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(4),
+                      color: HexColor('#CADBEB'),
+                    ),
+                    child: Center(
+                      child: Text('取消').simpleStyle(12, HexColor('#424A4D')),
+                    ),
                   ),
                 ),
               ],
@@ -202,7 +206,7 @@ class _AddUserDialogState extends State<AddUserDialog> {
         hintStyle: hintStyle,
         isDense: true,
         contentPadding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 15),
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 18),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(6)),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(6),
