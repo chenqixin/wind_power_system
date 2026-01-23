@@ -17,6 +17,7 @@ import 'package:wind_power_system/genernal/extension/text.dart';
 
 import '../content_navigator.dart';
 import 'add_user_dialog.dart';
+import 'login_dialog.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -185,8 +186,19 @@ class _HomePageState extends State<HomePage> {
                   Row(
                     children: [
                       InkWell(
+                        onTap: () async {
+                          final res = await showDialog(
+                            context: context,
+                            barrierDismissible: true,
+                            builder: (_) => const LoginDialog(),
+                          );
+                          if (res is Map<String, dynamic>) {
+                            // 登录成功后的处理，例如刷新界面或保存用户信息
+                          }
+                        },
                         child: Image.asset('btn_login.png'.imagePath,
-                            width: 90, height: 42),),
+                            width: 90, height: 42),
+                      ),
 
                       InkWell(
                         child: Image.asset('btn_register.png'.imagePath,

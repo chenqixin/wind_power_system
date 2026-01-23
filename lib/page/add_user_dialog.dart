@@ -118,11 +118,11 @@ class _AddUserDialogState extends State<AddUserDialog> {
             ),
             _formGroup(
               context,
-              label: '姓名：',
+              label: '密码：',
               labelStyle: labelStyle,
               child: _inputField(
                   controller: _realNameController,
-                  hintText: '请输入姓名',
+                  hintText: '请输入密码',
                   hintStyle: hintStyle,
                   textStyle: contentStyle),
             ),
