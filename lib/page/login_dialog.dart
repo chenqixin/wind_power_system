@@ -4,8 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:wind_power_system/core/style/app_colors.dart';
 import 'package:wind_power_system/core/constant/app_constant.dart';
 import 'package:wind_power_system/genernal/extension/text.dart';
-import 'package:wind_power_system/network/http/api_util.dart';
-import 'package:wind_power_system/core/utils/custom_toast.dart';
+import 'package:wind_power_system/view/notice_dialog.dart';
+import 'package:wind_power_system/db/app_database.dart';
+import 'package:wind_power_system/core/utils/secure_storage.dart';
 
 class LoginDialog extends StatefulWidget {
   const LoginDialog({super.key});
@@ -146,30 +147,36 @@ class _LoginDialogState extends State<LoginDialog> {
     final username = _usernameController.text.trim();
     final password = _passwordController.text.trim();
     if (username.isEmpty) {
-      AIToast.error('请输入用户名');
+      AppNotice.show(title: '提示', content: '请输入用户名');
       return;
     }
     if (password.isEmpty) {
-      AIToast.error('请输入密码');
+      AppNotice.show(title: '提示', content: '请输入密码');
       return;
     }
+    await AppDatabase.ensureUserTable();
+    final user = await AppDatabase.userByCredentials(username, password);
+    if (user == null) {
+      AppNotice.show(title: '提示', content: '用户名或密码错误');
+      return;
+    }
+    final roleRaw = user['role'];
+    final role = roleRaw is int ? roleRaw : int.tryParse('$roleRaw') ?? 0;
+    final saved = await SecureStorage.saveLogin(
+        username: username, password: password, role: role);
+    // if (!saved) {
+    //   AppNotice.show(title: '提示', content: '登录信息保存失败');
+    //   return;
+    // }
+    UserInfo.userName = username;
+    UserInfo.password = password;
+    UserInfo.role = role;
 
-    await Api.post(
-      'login',
-      data: {
-        'username': username,
-        'password': password,
-      },
-      successCallback: (data) {
-        AIToast.msg('登录成功');
-        Navigator.of(context).pop(<String, dynamic>{
-          'username': username,
-        });
-      },
-      failCallback: (code, msg) {
-        AIToast.error(msg);
-      },
-    );
+    AppNotice.show(title: '提示', content: '登录成功');
+    Future.delayed(const Duration(seconds: 3), () {
+      if (!mounted) return;
+      Navigator.of(context).pop();
+    });
   }
 
   Widget _formGroup({
@@ -255,4 +262,3 @@ class _LoginDialogState extends State<LoginDialog> {
     );
   }
 }
-

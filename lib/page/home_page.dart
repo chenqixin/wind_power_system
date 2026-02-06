@@ -6,7 +6,7 @@
 ///
 library;
 
-import 'dart:ffi';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:wind_power_system/core/constant/app_constant.dart';
@@ -14,11 +14,15 @@ import 'package:wind_power_system/core/style/app_decorations.dart';
 import 'package:wind_power_system/core/style/app_colors.dart';
 import 'package:wind_power_system/genernal/extension/string.dart';
 import 'package:wind_power_system/genernal/extension/text.dart';
+import 'package:wind_power_system/db/app_database.dart';
+import 'package:wind_power_system/network/http/api_util.dart';
+import 'package:wind_power_system/model/DeviceDetailData.dart' as model;
 
 import '../content_navigator.dart';
 import 'add_user_dialog.dart';
-import 'login_dialog.dart';
-
+import 'add_sn_dialog.dart';
+import 'package:wind_power_system/core/utils/fileutils.dart';
+import 'package:wind_power_system/core/utils/print_utils.dart';
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
 
@@ -27,21 +31,19 @@ class HomePage extends StatefulWidget {
 }
 
 class WindItem {
+  final String sn;
   final String name;
-  final String status;
-  final double power;
+  final String deviceSn;
+  final String ip;
+  final int port;
+  final model.DeviceDetailData? details;
 
-  WindItem(this.name, this.status, this.power);
+  WindItem(this.sn, this.name, this.deviceSn, this.ip, this.port, this.details);
 }
 
 class _HomePageState extends State<HomePage> {
-  final List<WindItem> items = List.generate(
-      28,
-      (i) => WindItem(
-            (1300 + i).toString(),
-            i % 5 == 0 ? '报警' : '正常',
-            908.0,
-          ));
+  List<WindItem> items = [];
+  Timer? _pollTimer;
 
   int? hoverIndex;
   OverlayEntry? _overlayEntry;
@@ -155,6 +157,60 @@ class _HomePageState extends State<HomePage> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    _loadItems();
+    // _pollTimer =
+    //     Timer.periodic(const Duration(minutes: 5), (_) => _pollDevices());
+  }
+
+  Future<void> _loadItems() async {
+    final devs = await AppDatabase.allDevices();
+    final list = <WindItem>[];
+    for (final d in devs) {
+      final sn = (d['sn'] as String?) ?? '';
+      final ip = (d['ip'] as String?) ?? '';
+      final port = (d['port'] as int?) ?? 0;
+      final deviceSn = (d['deviceSn'] as String?) ?? sn;
+      await getSNDetail(sn, ip, port)
+    }
+    setState(() {
+      items = list;
+    });
+  }
+
+  void _pollDevices() {
+    for (final it in items) {
+     // getSNDetail(sn: it.sn, ip: it.ip, port: it.port);
+    }
+  }
+
+  Future<DeviceDetailData> getSNDetail(String sn, String ip, String port) async {
+    Api.get(
+      "sn/detail",
+      params: {
+        "sn": sn,
+        "ip": ip,
+        "port": port,
+      },
+      successCallback: (data) {
+         model.DeviceDetailData.fromJson(data)
+        cjPrint(data);
+      },
+      failCallback: (code, msg) {
+        return null
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    _pollTimer?.cancel();
+    _hideTooltip();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final textMain = TextStyle(
       fontSize: AppScreen.adaptiveFontSize(context, 18),
@@ -190,7 +246,7 @@ class _HomePageState extends State<HomePage> {
                           final res = await showDialog(
                             context: context,
                             barrierDismissible: true,
-                            builder: (_) => const LoginDialog(),
+                            builder: (_) => const AddUserDialog(),
                           );
                           if (res is Map<String, dynamic>) {
                             // 登录成功后的处理，例如刷新界面或保存用户信息
@@ -199,7 +255,6 @@ class _HomePageState extends State<HomePage> {
                         child: Image.asset('btn_login.png'.imagePath,
                             width: 90, height: 42),
                       ),
-
                       InkWell(
                         child: Image.asset('btn_register.png'.imagePath,
                             width: 90, height: 42),
@@ -207,7 +262,7 @@ class _HomePageState extends State<HomePage> {
                           final res = await showDialog(
                             context: context,
                             barrierDismissible: true,
-                            builder: (_) => const AddUserDialog(),
+                            builder: (_) => AddSnDialog(),
                           );
                           if (res is Map<String, dynamic>) {}
                         },
@@ -245,7 +300,7 @@ class _HomePageState extends State<HomePage> {
                               ContentNavigator.navigatorKey.currentState!
                                   .pushNamed(
                                 '/detail',
-                                arguments: 'sn123454',
+                                arguments: it.sn,
                               );
                             },
                             child: Container(

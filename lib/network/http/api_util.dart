@@ -36,4 +36,12 @@ class Api {
       toastErrorMsg: toastErrorMsg,
     );
   }
+
+  static Future<void> requestDevicePolling({
+    required String sn,
+    required String ip,
+    required int port,
+  }) async {
+
+  }
 }

@@ -5,6 +5,8 @@ import 'package:wind_power_system/core/style/app_colors.dart';
 import 'package:wind_power_system/core/style/app_decorations.dart';
 import 'package:wind_power_system/core/constant/app_constant.dart';
 import 'package:wind_power_system/genernal/extension/text.dart';
+import 'package:wind_power_system/view/notice_dialog.dart';
+import 'package:wind_power_system/db/app_database.dart';
 
 class AddUserDialog extends StatefulWidget {
   const AddUserDialog({super.key});
@@ -16,6 +18,7 @@ class AddUserDialog extends StatefulWidget {
 class _AddUserDialogState extends State<AddUserDialog> {
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _realNameController = TextEditingController();
+  final TextEditingController _passWordController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
 
   String _role = '普通用户';
@@ -25,6 +28,7 @@ class _AddUserDialogState extends State<AddUserDialog> {
   void dispose() {
     _usernameController.dispose();
     _realNameController.dispose();
+    _passWordController.dispose();
     _phoneController.dispose();
     super.dispose();
   }
@@ -106,22 +110,32 @@ class _AddUserDialogState extends State<AddUserDialog> {
                 onChanged: (v) => setState(() => _role = v ?? _role),
               ),
             ),
+            // _formGroup(
+            //   context,
+            //   label: '状态：',
+            //   labelStyle: labelStyle,
+            //   child: _dropdown(
+            //     value: _status,
+            //     items: const ['正常', '禁用'],
+            //     onChanged: (v) => setState(() => _status = v ?? _status),
+            //   ),
+            // ),
             _formGroup(
               context,
-              label: '状态：',
+              label: '姓名：',
               labelStyle: labelStyle,
-              child: _dropdown(
-                value: _status,
-                items: const ['正常', '禁用'],
-                onChanged: (v) => setState(() => _status = v ?? _status),
-              ),
+              child: _inputField(
+                  controller: _realNameController,
+                  hintText: '请输入姓名',
+                  hintStyle: hintStyle,
+                  textStyle: contentStyle),
             ),
             _formGroup(
               context,
               label: '密码：',
               labelStyle: labelStyle,
               child: _inputField(
-                  controller: _realNameController,
+                  controller: _passWordController,
                   hintText: '请输入密码',
                   hintStyle: hintStyle,
                   textStyle: contentStyle),
@@ -141,14 +155,17 @@ class _AddUserDialogState extends State<AddUserDialog> {
             Row(
               children: [
                 Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(4),
-                      color: HexColor('#0696BD'),
-                    ),
-                    child: Center(
-                      child: Text('确定').simpleStyle(12, HexColor('#F8FCFF')),
+                  child: InkWell(
+                    onTap: registerUser,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(4),
+                        color: HexColor('#0696BD'),
+                      ),
+                      child: Center(
+                        child: Text('确定').simpleStyle(12, HexColor('#F8FCFF')),
+                      ),
                     ),
                   ),
                 ),
@@ -171,6 +188,50 @@ class _AddUserDialogState extends State<AddUserDialog> {
         ),
       ),
     );
+  }
+
+  void registerUser() async {
+    final username = _usernameController.text.trim();
+    final realName = _realNameController.text.trim();
+    final password = _passWordController.text.trim();
+    final phone = _phoneController.text.trim();
+    if (username.isEmpty) {
+      AppNotice.show(title: '提示', content: '请输入用户名');
+      return;
+    }
+    if (realName.isEmpty) {
+      AppNotice.show(title: '提示', content: '请输入姓名');
+      return;
+    }
+    if (password.isEmpty) {
+      AppNotice.show(title: '提示', content: '请输入密码');
+      return;
+    }
+    if (phone.isEmpty) {
+      AppNotice.show(title: '提示', content: '请输入手机号');
+      return;
+    }
+    final roleCode = _role == '管理员' ? 2 : 1;
+    await AppDatabase.ensureUserTable();
+    final exist = await AppDatabase.userExists(username);
+    if (exist) {
+      AppNotice.show(title: '提示', content: '用户名已存在');
+      return;
+    }
+    await AppDatabase.insertUser(
+      username: username,
+      role: roleCode,
+      realName: realName,
+      password: password,
+      phone: phone,
+    );
+    Navigator.of(context).pop(<String, dynamic>{
+      'username': username,
+      'role': roleCode,
+      'realName': realName,
+      'phone': phone,
+    });
+    AppNotice.show(title: '提示', content: '新增成功');
   }
 
   Widget _formGroup(BuildContext context,
@@ -236,15 +297,13 @@ class _AddUserDialogState extends State<AddUserDialog> {
         value: value,
         isExpanded: true,
         dropdownColor: AppColors.white,
-        style: const TextStyle(
-            fontSize: 14, color: AppColors.blue133),
+        style: const TextStyle(fontSize: 14, color: AppColors.blue133),
         items: items
             .map(
               (e) => DropdownMenuItem<String>(
                 value: e,
                 child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 0),
+                  padding: const EdgeInsets.symmetric(horizontal: 0),
                   child: Text(
                     e,
                     style: const TextStyle(

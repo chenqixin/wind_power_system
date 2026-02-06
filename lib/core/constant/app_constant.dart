@@ -23,6 +23,9 @@ class AppConstant {
       cjPrint("AppConstant--context--view未布局完成");
     }
   }
+
+
+  //
 }
 
 /// 屏幕相关常量
@@ -78,4 +81,10 @@ class AppScreen extends AppConstant {
   static double get devicePixelRatio {
     return MediaQuery.of(AppConstant.shared.context).devicePixelRatio;
   }
+}
+
+class UserInfo {
+  static String userName = '';
+  static String password = '';
+  static int role = 0;
 }
