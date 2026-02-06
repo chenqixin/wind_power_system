@@ -23,6 +23,7 @@ import 'add_user_dialog.dart';
 import 'add_sn_dialog.dart';
 import 'package:wind_power_system/core/utils/fileutils.dart';
 import 'package:wind_power_system/core/utils/print_utils.dart';
+
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
 
@@ -32,13 +33,12 @@ class HomePage extends StatefulWidget {
 
 class WindItem {
   final String sn;
-  final String name;
   final String deviceSn;
   final String ip;
   final int port;
   final model.DeviceDetailData? details;
 
-  WindItem(this.sn, this.name, this.deviceSn, this.ip, this.port, this.details);
+  WindItem(this.sn, this.deviceSn, this.ip, this.port, this.details);
 }
 
 class _HomePageState extends State<HomePage> {
@@ -71,6 +71,142 @@ class _HomePageState extends State<HomePage> {
         ),
       ),
     );
+  }
+
+  //计算功率
+  ({String value, String unit}) _powerValueUnit(WindItem it) {
+    final s = it.details?.state;
+    if (s == null) return (value: '-', unit: '');
+    final ai = (s.aI ?? 0).toDouble();
+    final bi = (s.bI ?? 0).toDouble();
+    final ci = (s.cI ?? 0).toDouble();
+    final av = (s.aV ?? 0).toDouble();
+    final bv = (s.bV ?? 0).toDouble();
+    final cv = (s.cV ?? 0).toDouble();
+    final p = ai * av + bi * bv + ci * cv;
+    if (p >= 1000) {
+      return (value: (p / 1000).toStringAsFixed(2), unit: 'kw');
+    } else {
+      return (value: p.toStringAsFixed(2), unit: 'W');
+    }
+  }
+
+  String _statusText(WindItem it) {
+    final s = it.details?.state;
+    final ice = (s?.iceState ?? 0) == 1;
+    final hot = (s?.hotState1 ?? 0) == 1;
+    return (ice || hot) ? '警告' : '电网限功率运行';
+  }
+
+  String _statusImg(WindItem it) {
+    final s = it.details?.state;
+    final ice = (s?.iceState ?? 0) == 1;
+    final hot = (s?.hotState1 ?? 0) == 1;
+    return (ice || hot) ? 'ic_error.png' : 'ic_right.png';
+  }
+
+  //总功率
+  ({String value, String unit}) _totalPowerValueUnit() {
+    double sumW = 0.0;
+    for (final it in items) {
+      final res = _powerValueUnit(it);
+      final v = double.tryParse(res.value);
+      if (v == null) continue;
+      if (res.unit.toLowerCase() == 'kw') {
+        sumW += v * 1000.0;
+      } else if (res.unit == 'W') {
+        sumW += v;
+      }
+    }
+    if (sumW >= 1000.0) {
+      return (value: (sumW / 1000.0).toStringAsFixed(2), unit: 'kw');
+    } else {
+      return (value: sumW.toStringAsFixed(2), unit: 'W');
+    }
+  }
+
+  num? _avg3(num? a, num? b, num? c) {
+    final values = [a, b, c].where((e) => e != null).cast<num>().toList();
+    if (values.isEmpty) return null;
+    final sum = values.fold<double>(0.0, (p, e) => p + e.toDouble());
+    return sum / values.length;
+  }
+
+  num? _avgIceThickness(model.Winddata? wind) {
+    if (wind == null) return null;
+    final b1 = wind.blade1 == null
+        ? null
+        : _avg3(
+            wind.blade1!.tickUp, wind.blade1!.tickMid, wind.blade1!.tickDown);
+    final b2 = wind.blade2 == null
+        ? null
+        : _avg3(
+            wind.blade2!.tickUp, wind.blade2!.tickMid, wind.blade2!.tickDown);
+    final b3 = wind.blade3 == null
+        ? null
+        : _avg3(
+            wind.blade3!.tickUp, wind.blade3!.tickMid, wind.blade3!.tickDown);
+    final values = [b1, b2, b3].where((e) => e != null).cast<num>().toList();
+    if (values.isEmpty) return null;
+    final sum = values.fold<double>(0.0, (p, e) => p + e.toDouble());
+    return sum / values.length;
+  }
+
+  num? _avgBladeTemp(num? up, num? mid, num? down) {
+    return _avg3(up, mid, down);
+  }
+
+  num? _avgDeviceTemp(model.Winddata? wind) {
+    if (wind == null) return null;
+    final b1 = wind.blade1 == null
+        ? null
+        : _avgBladeTemp(
+            wind.blade1!.tempUp, wind.blade1!.tempMid, wind.blade1!.tempDown);
+    final b2 = wind.blade2 == null
+        ? null
+        : _avgBladeTemp(
+            wind.blade2!.tempUp, wind.blade2!.tempMid, wind.blade2!.tempDown);
+    final b3 = wind.blade3 == null
+        ? null
+        : _avgBladeTemp(
+            wind.blade3!.tempUp, wind.blade3!.tempMid, wind.blade3!.tempDown);
+    final values = [b1, b2, b3].where((e) => e != null).cast<num>().toList();
+    if (values.isEmpty) return null;
+    final sum = values.fold<double>(0.0, (p, e) => p + e.toDouble());
+    return sum / values.length;
+  }
+
+  num? _avgAllDeviceTemp() {
+    final values = items
+        .map((it) => _avgDeviceTemp(it.details?.winddata))
+        .where((e) => e != null)
+        .cast<num>()
+        .toList();
+    if (values.isEmpty) return null;
+    final sum = values.fold<double>(0.0, (p, e) => p + e.toDouble());
+    return sum / values.length;
+  }
+
+  num? _avgWindSpeed() {
+    final values = items
+        .map((it) => it.details?.state?.windSpeed)
+        .where((e) => e != null && e >= 0)
+        .cast<num>()
+        .toList();
+    if (values.isEmpty) return null;
+    final sum = values.fold<double>(0.0, (p, e) => p + e.toDouble());
+    return sum / values.length;
+  }
+
+  num? _avgIceThicknessAll() {
+    final values = items
+        .map((it) => _avgIceThickness(it.details?.winddata))
+        .where((e) => e != null && e >= 0)
+        .cast<num>()
+        .toList();
+    if (values.isEmpty) return null;
+    final sum = values.fold<double>(0.0, (p, e) => p + e.toDouble());
+    return sum / values.length;
   }
 
   //综合管理
@@ -116,6 +252,38 @@ class _HomePageState extends State<HomePage> {
         color: const Color(0xFF6B7280),
       );
 
+      //取平均值
+      String _avgTempStr(num? a, num? b, num? c) {
+        final values = [a, b, c].where((e) => e != null).cast<num>().toList();
+        if (values.isEmpty) return 'error';
+        final sum = values.fold<double>(0.0, (p, e) => p + e.toDouble());
+        final avg = sum / values.length;
+        return '${avg.toStringAsFixed(2)}℃';
+      }
+
+      final wind = it.details?.winddata;
+      final blade1T = wind?.blade1 == null
+          ? 'error'
+          : _avgTempStr(
+              wind!.blade1!.tempUp,
+              wind.blade1!.tempMid,
+              wind.blade1!.tempDown,
+            );
+      final blade2T = wind?.blade2 == null
+          ? 'error'
+          : _avgTempStr(
+              wind!.blade2!.tempUp,
+              wind.blade2!.tempMid,
+              wind.blade2!.tempDown,
+            );
+      final blade3T = wind?.blade3 == null
+          ? 'error'
+          : _avgTempStr(
+              wind!.blade3!.tempUp,
+              wind.blade3!.tempMid,
+              wind.blade3!.tempDown,
+            );
+
       return Positioned(
         left: left,
         top: top,
@@ -129,14 +297,15 @@ class _HomePageState extends State<HomePage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '1322',
+                  it.sn,
                 ).simpleStyle(22, AppColors.blue135, isBold: true),
-                _buildHovelItem(1, '设备型号：', 'GW115/2200'),
-                _buildHovelItem(0, '加热功率：', '908.00kw'),
+                _buildHovelItem(1, '设备型号：', it.deviceSn),
+                _buildHovelItem(0, '加热功率：',
+                    '${_powerValueUnit(it).value} ${_powerValueUnit(it).unit}'),
                 _buildHovelItem(1, '状态分类：：', '-'),
-                _buildHovelItem(0, '叶片1平均温度：', '25.00℃'),
-                _buildHovelItem(1, '叶片2平均温度：', '26.00℃'),
-                _buildHovelItem(0, '叶片3平均温度：', '27.00℃'),
+                _buildHovelItem(0, '叶片1平均温度：', blade1T),
+                _buildHovelItem(1, '叶片2平均温度：', blade2T),
+                _buildHovelItem(0, '叶片3平均温度：', blade3T),
               ],
             ),
           ),
@@ -172,7 +341,14 @@ class _HomePageState extends State<HomePage> {
       final ip = (d['ip'] as String?) ?? '';
       final port = (d['port'] as int?) ?? 0;
       final deviceSn = (d['deviceSn'] as String?) ?? sn;
-      await getSNDetail(sn, ip, port)
+      final detail = await getSNDetail(sn, ip, port);
+      list.add(WindItem(
+        sn,
+        deviceSn,
+        ip,
+        port,
+        detail,
+      ));
     }
     setState(() {
       items = list;
@@ -181,26 +357,32 @@ class _HomePageState extends State<HomePage> {
 
   void _pollDevices() {
     for (final it in items) {
-     // getSNDetail(sn: it.sn, ip: it.ip, port: it.port);
+      //getSNDetail(sn: it.sn, ip: it.ip, port: it.port);
     }
   }
 
-  Future<DeviceDetailData> getSNDetail(String sn, String ip, String port) async {
-    Api.get(
-      "sn/detail",
-      params: {
-        "sn": sn,
-        "ip": ip,
-        "port": port,
-      },
-      successCallback: (data) {
-         model.DeviceDetailData.fromJson(data)
-        cjPrint(data);
-      },
-      failCallback: (code, msg) {
-        return null
-      },
-    );
+  Future<model.DeviceDetailData?> getSNDetail(
+      String sn, String ip, int port) async {
+    final completer = Completer<model.DeviceDetailData?>();
+    try {
+      await Api.get(
+        "sn/detail",
+        successCallback: (data) {
+          try {
+            final detail = model.DeviceDetailData.fromJson(data);
+            completer.complete(detail);
+          } catch (_) {
+            completer.complete(null);
+          }
+        },
+        failCallback: (code, msg) {
+          completer.complete(null);
+        },
+      );
+    } catch (_) {
+      completer.complete(null);
+    }
+    return await completer.future;
   }
 
   @override
@@ -259,6 +441,7 @@ class _HomePageState extends State<HomePage> {
                         child: Image.asset('btn_register.png'.imagePath,
                             width: 90, height: 42),
                         onTap: () async {
+                          //final detail =await getSNDetail("", "",1);
                           final res = await showDialog(
                             context: context,
                             barrierDismissible: true,
@@ -330,7 +513,7 @@ class _HomePageState extends State<HomePage> {
                                                 CrossAxisAlignment.start,
                                             children: [
                                               Text(
-                                                it.name,
+                                                it.sn,
                                                 style: textMain,
                                                 maxLines: 1,
                                                 overflow: TextOverflow.ellipsis,
@@ -339,7 +522,10 @@ class _HomePageState extends State<HomePage> {
                                               Text('冰层等级', style: textSub),
                                               const SizedBox(height: 2),
                                               Text(
-                                                '45',
+                                                _avgIceThickness(it
+                                                            .details?.winddata)
+                                                        ?.toStringAsFixed(2) ??
+                                                    '-',
                                                 style: textCon,
                                               ),
                                             ],
@@ -352,7 +538,7 @@ class _HomePageState extends State<HomePage> {
                                                 Row(
                                                   children: [
                                                     Image.asset(
-                                                      'ic_right.png'.imagePath,
+                                                      _statusImg(it).imagePath,
                                                       width: 15,
                                                       height: 15,
                                                     ),
@@ -360,7 +546,7 @@ class _HomePageState extends State<HomePage> {
                                                       width: 2,
                                                     ),
                                                     Text(
-                                                      '电网限功率运行',
+                                                      _statusText(it),
                                                       style: textSub,
                                                       maxLines: 1,
                                                       overflow:
@@ -384,14 +570,16 @@ class _HomePageState extends State<HomePage> {
                                                   child: Row(
                                                     children: [
                                                       Text(
-                                                        '960',
+                                                        _powerValueUnit(it)
+                                                            .value,
                                                         style: textCon,
                                                       ),
                                                       const SizedBox(
                                                         width: 2,
                                                       ),
                                                       Text(
-                                                        'kw',
+                                                        _powerValueUnit(it)
+                                                            .unit,
                                                         style: TextStyle(
                                                           fontSize: 12,
                                                           color: HexColor(
@@ -443,11 +631,21 @@ class _HomePageState extends State<HomePage> {
                           ],
                         ),
                         const SizedBox(height: 14),
-                        _buildZHItem(1, '加热总功率', '150', 'KW/h'),
-                        _buildZHItem(0, '平均环境温度：', '35', '℃'),
-                        _buildZHItem(1, '平均冰层厚度：', '50', 'mm'),
-                        _buildZHItem(0, '平均风速：', '3', 'm'),
-                        _buildZHItem(1, '装机台数：', '50', '台'),
+                        _buildZHItem(1, '加热总功率', _totalPowerValueUnit().value,
+                            _totalPowerValueUnit().unit),
+                        _buildZHItem(
+                            0,
+                            '平均环境温度：',
+                            _avgAllDeviceTemp()?.toStringAsFixed(2) ?? '-',
+                            '℃'),
+                        _buildZHItem(
+                            1,
+                            '平均冰层厚度：',
+                            _avgIceThicknessAll()?.toStringAsFixed(2) ?? '-',
+                            'mm'),
+                        _buildZHItem(0, '平均风速：',
+                            _avgWindSpeed()?.toStringAsFixed(2) ?? '-', 'm'),
+                        _buildZHItem(1, '装机台数：', items.length.toString(), '台'),
                       ],
                     ),
                   ),
@@ -489,9 +687,12 @@ class _HomePageState extends State<HomePage> {
                                 mainAxisSpacing: gap,
                                 childAspectRatio: ratio,
                                 children: [
-                                  _statTile('22', 'ic_right.png', '正常状态'),
-                                  _statTile('0', 'ic_ice.png', '结冰状态'),
-                                  _statTile('0', 'ic_warm.png', '加热状态'),
+                                  _statTile(_normalCount().toString(),
+                                      'ic_right.png', '正常状态'),
+                                  _statTile(_iceCount().toString(),
+                                      'ic_ice.png', '结冰状态'),
+                                  _statTile(_heatCount().toString(),
+                                      'ic_warm.png', '加热状态'),
                                   _statTile('0', 'ic_unkown.png', '未知事件'),
                                 ],
                               );
@@ -508,6 +709,26 @@ class _HomePageState extends State<HomePage> {
         ],
       ),
     );
+  }
+
+  //正常状态
+  int _normalCount() {
+    return items.where((it) {
+      final s = it.details?.state;
+      final hot = (s?.hotState1 ?? 0) == 1;
+      final ice = (s?.iceState ?? 0) == 1;
+      return !hot && !ice;
+    }).length;
+  }
+
+  //结冰状态
+  int _iceCount() {
+    return items.where((it) => (it.details?.state?.iceState ?? 0) == 1).length;
+  }
+
+  //加热状态
+  int _heatCount() {
+    return items.where((it) => (it.details?.state?.hotState1 ?? 0) == 1).length;
   }
 
   Widget _metricRow(String name, String value, TextStyle t1, TextStyle t2) {

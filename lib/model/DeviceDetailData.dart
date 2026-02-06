@@ -411,6 +411,9 @@ class State {
     this.aI,
     this.bI,
     this.cI,
+    this.aV,
+    this.bV,
+    this.cV,
     this.cmd,
     this.tcpIp,
     this.envTemp,
@@ -434,6 +437,9 @@ class State {
     aI = json['A_I'];
     bI = json['B_I'];
     cI = json['C_I'];
+    aV = json['A_V'];
+    bV = json['B_V'];
+    cV = json['C_V'];
     cmd = json['Cmd'];
     tcpIp = json['Tcp_ip'];
     envTemp = json['Env_temp'];
@@ -467,6 +473,15 @@ class State {
 
   /// C 相电流
   num? cI;
+
+  /// A 相电压
+  num? aV;
+
+  /// B 相电压
+  num? bV;
+
+  /// C 相电压
+  num? cV;
 
   /// 命令
   num? cmd;
@@ -518,6 +533,9 @@ class State {
     map['A_I'] = aI;
     map['B_I'] = bI;
     map['C_I'] = cI;
+    map['A_V'] = aV;
+    map['B_V'] = bV;
+    map['C_V'] = cV;
     map['Cmd'] = cmd;
     map['Tcp_ip'] = tcpIp;
     map['Env_temp'] = envTemp;

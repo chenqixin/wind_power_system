@@ -11,7 +11,7 @@ class AIBaseResponse extends BaseResponse{
 
   AIBaseResponse.fromJson(Map<String, dynamic> json) {
     code = json['code'];
-    message = json['message'];
+    message = json['msg'];
     data = json['data'];
   }
 

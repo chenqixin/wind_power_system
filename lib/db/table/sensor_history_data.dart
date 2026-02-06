@@ -18,6 +18,9 @@ class SensorHistoryData extends Table {
   RealColumn get aI => real().nullable()();
   RealColumn get bI => real().nullable()();
   RealColumn get cI => real().nullable()();
+  RealColumn get aV => real().nullable()();
+  RealColumn get bV => real().nullable()();
+  RealColumn get cV => real().nullable()();
   IntColumn get cmd => integer().nullable()();
   TextColumn get tcpIp => text().nullable()();
   RealColumn get envTemp => real().nullable()();
@@ -90,6 +93,9 @@ String sensorHistoryCreateSql(String table) {
       'aI REAL NULL, '
       'bI REAL NULL, '
       'cI REAL NULL, '
+      'aV REAL NULL, '
+      'bV REAL NULL, '
+      'cV REAL NULL, '
       'cmd INTEGER NULL, '
       'tcpIp TEXT NULL, '
       'envTemp REAL NULL, '

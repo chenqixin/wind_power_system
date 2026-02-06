@@ -96,6 +96,15 @@ class AppDatabase {
     if (!cols.contains('cI')) {
       await db.execute('ALTER TABLE ' + table + ' ADD COLUMN cI REAL NULL');
     }
+    if (!cols.contains('aV')) {
+      await db.execute('ALTER TABLE ' + table + ' ADD COLUMN aV REAL NULL');
+    }
+    if (!cols.contains('bV')) {
+      await db.execute('ALTER TABLE ' + table + ' ADD COLUMN bV REAL NULL');
+    }
+    if (!cols.contains('cV')) {
+      await db.execute('ALTER TABLE ' + table + ' ADD COLUMN cV REAL NULL');
+    }
     if (!cols.contains('cmd')) {
       await db.execute('ALTER TABLE ' + table + ' ADD COLUMN cmd INTEGER NULL');
     }
@@ -479,6 +488,9 @@ class AppDatabase {
         'aI': st?.aI,
         'bI': st?.bI,
         'cI': st?.cI,
+        'aV': st?.aV,
+        'bV': st?.bV,
+        'cV': st?.cV,
         'cmd': st?.cmd?.toInt(),
         'tcpIp': st?.tcpIp,
         'envTemp': st?.envTemp,
