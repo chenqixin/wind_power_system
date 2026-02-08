@@ -6,6 +6,7 @@
 ///
 library;
 
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:wind_power_system/core/style/app_decorations.dart';
 import 'package:wind_power_system/core/style/app_colors.dart';
@@ -14,6 +15,10 @@ import 'package:wind_power_system/genernal/extension/string.dart';
 import 'package:wind_power_system/genernal/extension/text.dart';
 import 'package:wind_power_system/content_navigator.dart';
 import 'package:dash_painter/dash_painter.dart';
+import 'package:wind_power_system/network/http/api_util.dart';
+import 'package:wind_power_system/model/DeviceDetailData.dart' as model;
+import 'package:wind_power_system/core/utils/power_utils.dart';
+import 'package:wind_power_system/view/notice_dialog.dart';
 
 class DeviceDetailPage extends StatefulWidget {
   final String sn;
@@ -23,9 +28,42 @@ class DeviceDetailPage extends StatefulWidget {
   _DeviceDetailPageState createState() => _DeviceDetailPageState();
 }
 
-class _DeviceDetailPageState extends State<DeviceDetailPage> {
+class _DeviceDetailPageState extends State<DeviceDetailPage>
+    with SingleTickerProviderStateMixin {
   final TextEditingController _fzController = TextEditingController();
   double _heatingMinutes = 10;
+  bool _heatingMinutesInitialized = false;
+  bool _iSetInitialized = false;
+  model.DeviceDetailData? detail;
+  Timer? _pollTimer;
+  late AnimationController _blinkController;
+  late Animation<double> _opacityAnim;
+
+  //故障
+  bool _faultOn(int index) {
+    final f = detail?.fault;
+    if (f == null) return false;
+    switch (index) {
+      case 0:
+        return (f.faultRing ?? 0) == 1;
+      case 1:
+        return (f.faultUps ?? 0) == 1;
+      case 2:
+        return (f.faultTestCom ?? 0) == 1;
+      case 3:
+        return (f.faultBlade1 ?? 0) == 1;
+      case 4:
+        return (f.faultIavg ?? 0) == 1;
+      case 5:
+        return (f.faultBlade2 ?? 0) == 1;
+      case 6:
+        return (f.faultStick ?? 0) == 1;
+      case 7:
+        return (f.faultBlade3 ?? 0) == 1;
+      default:
+        return false;
+    }
+  }
 
   Widget _title(String text) {
     return Row(
@@ -34,6 +72,31 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
         const SizedBox(width: 12),
         Text(text).simpleStyle(16, AppColors.blue06, isBold: true),
       ],
+    );
+  }
+
+  //请求数据
+  void getSNDetail(String sn, String ip, int port) {
+    Api.get(
+      "sn/detail",
+      successCallback: (data) {
+        final d = model.DeviceDetailData.fromJson(data);
+        if (!mounted) return;
+        setState(() {
+          detail = d;
+          if (!_heatingMinutesInitialized) {
+            final ctrl = (d.state?.ctrlMode ?? 0) == 1;
+            final time = (d.state?.hotTime ?? 0).toDouble();
+            _heatingMinutes = ctrl ? time : 0.0;
+            _heatingMinutesInitialized = true;
+          }
+          if (!_iSetInitialized) {
+            _fzController.text = (d.state?.iSet)?.toString() ?? '';
+            _iSetInitialized = true;
+          }
+        });
+      },
+      failCallback: (code, msg) {},
     );
   }
 
@@ -110,8 +173,28 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
     );
   }
 
+  //得出电流
+  String _bladeCurrent(int blade) {
+    final w = detail?.winddata;
+    num? i;
+    switch (blade) {
+      case 1:
+        i = w?.blade1?.windI;
+        break;
+      case 2:
+        i = w?.blade2?.windI;
+        break;
+      case 3:
+        i = w?.blade3?.windI;
+        break;
+      default:
+        i = null;
+    }
+    return i == null ? '-' : i.toString();
+  }
+
   // 叶子状态
-  Widget _leafStatus(String name) {
+  Widget _leafStatus(String name, int index) {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.blueE9,
@@ -140,8 +223,13 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 8.0, vertical: 10.0),
                           child: Row(children: [
-                            Image.asset('ic_unselect.png'.imagePath,
-                                width: 12, height: 12),
+                            Image.asset((() {
+                              final s = detail?.state;
+                              final on = (s?.hotState4 ?? 0) == 1;
+                              return on
+                                  ? 'ic_jr.png'.imagePath
+                                  : 'ic_jr_kai.png'.imagePath;
+                            })(), width: 12, height: 12),
                             const SizedBox(width: 8),
                             Text('加热状态').simpleStyle(14, HexColor('#051F34')),
                           ]),
@@ -162,9 +250,15 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
                           child: Row(children: [
                             Text('功率：').simpleStyle(14, HexColor('#051F34')),
                             Spacer(),
-                            Text('10').simpleStyle(12, AppColors.blue06,
-                                isBold: true),
-                            Text('kw').simpleStyle(12, AppColors.blue133),
+                            Text(bladePowerValueUnit(
+                                        detail?.winddata, index + 1)
+                                    .value)
+                                .simpleStyle(12, AppColors.blue06,
+                                    isBold: true),
+                            Text(bladePowerValueUnit(
+                                        detail?.winddata, index + 1)
+                                    .unit)
+                                .simpleStyle(12, AppColors.blue133),
                           ]),
                         )),
                   ),
@@ -172,11 +266,11 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
               ),
             ),
             SizedBox(width: 12),
-            _buildLeafItem(),
+            _buildLeafItem(index, 1),
             SizedBox(width: 12),
-            _buildLeafItem(),
+            _buildLeafItem(index, 2),
             SizedBox(width: 12),
-            _buildLeafItem(),
+            _buildLeafItem(index, 3),
             SizedBox(width: 12),
           ],
         ),
@@ -184,7 +278,7 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
     );
   }
 
-  Expanded _buildLeafItem() {
+  Expanded _buildLeafItem(int bladeIndex, int partIndex) {
     return Expanded(
         flex: 270,
         child: Container(
@@ -204,68 +298,139 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
               ),
               padding: const EdgeInsets.symmetric(horizontal: 12),
               child: Center(
-                child: Text('叶\n根').simpleStyle(12, HexColor('#051F34')),
+                child: Text(partIndex == 1
+                        ? '叶\n根'
+                        : partIndex == 2
+                            ? '叶\n中'
+                            : '叶\n尖')
+                    .simpleStyle(12, HexColor('#051F34')),
               ),
             ),
             Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  child: Column(
-                    children: [
-                      Expanded(
-                        child: Row(
-                          children: [
-                            Text('温  度：').simpleStyle(11, HexColor('#051F34')),
-                            Spacer(),
-                            Text('25').simpleStyle(11, AppColors.blue06,isBold: true),
-                            Text('℃').simpleStyle(12, HexColor('#133F72')),
-                          ],
-                        ),
-                      ),
-                      //虚线
-
-                      _buildLine(),
-
-                      Expanded(
-                        child: Row(
-                          children: [
-                            Text('厚度等级：').simpleStyle(11, HexColor('#051F34')),
-                            Spacer(),
-                            Text('5').simpleStyle(11, AppColors.blue06,isBold: true),
-                          ],
-                        ),
-                      ),
-                      _buildLine(),
-                      Expanded(
-                        child: Row(
-                          children: [
-                            Text('运动状态：').simpleStyle(11, HexColor('#051F34')),
-                            Spacer(),
-                            Image.asset('ic_unselect.png'.imagePath,
-                                width: 12, height: 12),
-                          ],
-                        ),
-                      )
-                    ],
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Column(
+                children: [
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Text('温  度：').simpleStyle(11, HexColor('#051F34')),
+                        Spacer(),
+                        Text(_partTempValue(bladeIndex, partIndex))
+                            .simpleStyle(11, AppColors.blue06, isBold: true),
+                        Text('℃').simpleStyle(12, HexColor('#133F72')),
+                      ],
+                    ),
                   ),
-                ))
+                  //虚线
+
+                  _buildLine(),
+
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Text('厚度等级：').simpleStyle(11, HexColor('#051F34')),
+                        Spacer(),
+                        Text(_partTickValue(bladeIndex, partIndex))
+                            .simpleStyle(11, AppColors.blue06, isBold: true),
+                      ],
+                    ),
+                  ),
+                  _buildLine(),
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Text('运动状态：').simpleStyle(11, HexColor('#051F34')),
+                        Spacer(),
+                        Image.asset(
+                            (_partRunOn(bladeIndex, partIndex)
+                                    ? 'ic_jr.png'
+                                    : 'ic_jr_guan.png')
+                                .imagePath,
+                            width: 12,
+                            height: 12),
+                      ],
+                    ),
+                  )
+                ],
+              ),
+            ))
           ]),
         ));
   }
 
+  String _partTempValue(int bladeIndex, int partIndex) {
+    final b = _bladeByIndex(bladeIndex);
+    if (b == null) return '-';
+    switch (partIndex) {
+      case 1:
+        return (b.tempDown)?.toString() ?? '-';
+      case 2:
+        return (b.tempMid)?.toString() ?? '-';
+      case 3:
+        return (b.tempUp)?.toString() ?? '-';
+      default:
+        return '-';
+    }
+  }
+
+  String _partTickValue(int bladeIndex, int partIndex) {
+    final b = _bladeByIndex(bladeIndex);
+    if (b == null) return '-';
+    switch (partIndex) {
+      case 1:
+        return (b.tickDown)?.toString() ?? '-';
+      case 2:
+        return (b.tickMid)?.toString() ?? '-';
+      case 3:
+        return (b.tickUp)?.toString() ?? '-';
+      default:
+        return '-';
+    }
+  }
+
+  bool _partRunOn(int bladeIndex, int partIndex) {
+    final b = _bladeByIndex(bladeIndex);
+    if (b == null) return false;
+    switch (partIndex) {
+      case 1:
+        return (b.runDown ?? 0) == 1;
+      case 2:
+        return (b.runMid ?? 0) == 1;
+      case 3:
+        return (b.runUp ?? 0) == 1;
+      default:
+        return false;
+    }
+  }
+
+  dynamic _bladeByIndex(int bladeIndex) {
+    final w = detail?.winddata;
+    switch (bladeIndex) {
+      case 0:
+        return w?.blade1;
+      case 1:
+        return w?.blade2;
+      case 2:
+        return w?.blade3;
+      default:
+        return null;
+    }
+  }
+
   SizedBox _buildLine() {
     return SizedBox(
-                height: 1,
-                width: double.infinity,
-                child: CustomPaint(
-                  painter: _DashLinePainter(
-                    color: HexColor('#C1D8F0'),
-                    strokeWidth: 1,
-                    step: 3,
-                    span: 1,
-                  ),
-                ),
-              );
+      height: 1,
+      width: double.infinity,
+      child: CustomPaint(
+        painter: _DashLinePainter(
+          color: HexColor('#C1D8F0'),
+          strokeWidth: 1,
+          step: 3,
+          span: 1,
+        ),
+      ),
+    );
   }
 
   Widget _heatingStateCard() {
@@ -407,7 +572,17 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
   void initState() {
     // TODO: implement initState
     super.initState();
+    getSNDetail(widget.sn, "172.0.0.1", 77);
+    _pollTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+      getSNDetail(widget.sn, "172.0.0.1", 77);
+    });
     _fzController.text = '';
+    _blinkController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    )..repeat(reverse: true);
+    _opacityAnim = Tween<double>(begin: 0.6, end: 1.0).animate(
+        CurvedAnimation(parent: _blinkController, curve: Curves.easeInOut));
   }
 
   @override
@@ -415,6 +590,41 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
     // TODO: implement dispose
     super.dispose();
     _fzController.dispose();
+    _pollTimer?.cancel();
+    _blinkController.dispose();
+  }
+
+  bool _controlOn(String title) {
+    final s = detail?.state;
+    switch (title) {
+      case '柜内加热电源':
+        return (s?.envHot ?? 0) == 1;
+      case '急停按钮':
+        return (s?.errorStop ?? 0) == 1;
+      case '远程模式':
+        return (s?.ctrlMode ?? 0) == 1;
+      case '主接触器控制电源':
+        return (s?.hotAll ?? 0) == 1;
+      case '机舱230V断路器':
+        return false;
+      default:
+        return false;
+    }
+  }
+
+  // 提交加热设置
+  Future<void> _submitHeatingSettings({
+    required bool heatingOn,
+    int? hotTime,
+    num? iSet,
+  }) async {
+    if (heatingOn) {
+      if (hotTime == null || hotTime <= 0 || iSet == null || iSet <= 0) {
+        await AppNotice.show(title: '提示', content: '加热时长与阈值必须大于0');
+        return;
+      }
+    }
+    await AppNotice.show(title: '提示', content: '已提交');
   }
 
   @override
@@ -530,7 +740,11 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
                                                   Row(
                                                     children: [
                                                       Image.asset(
-                                                          'ic_select.png'
+                                                          ((detail?.state?.ctrlMode ??
+                                                                          0) ==
+                                                                      1
+                                                                  ? 'ic_select.png'
+                                                                  : 'ic_unselect.png')
                                                               .imagePath,
                                                           width: 20,
                                                           height: 20),
@@ -542,7 +756,11 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
                                                   Row(
                                                     children: [
                                                       Image.asset(
-                                                          'ic_unselect.png'
+                                                          ((detail?.state?.ctrlMode ??
+                                                                          0) ==
+                                                                      0
+                                                                  ? 'ic_select.png'
+                                                                  : 'ic_unselect.png')
                                                               .imagePath,
                                                           width: 20,
                                                           height: 20),
@@ -565,8 +783,18 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
                                     crossAxisAlignment:
                                         CrossAxisAlignment.center,
                                     children: [
-                                      Image.asset('ic_jr.png'.imagePath,
-                                          width: 20, height: 20),
+                                      (((detail?.state?.iceState) ?? 0) == 1)
+                                          ? FadeTransition(
+                                              opacity: _opacityAnim,
+                                              child: Image.asset(
+                                                  'ic_jr.png'.imagePath,
+                                                  width: 20,
+                                                  height: 20),
+                                            )
+                                          : Image.asset(
+                                              'ic_jr_guan.png'.imagePath,
+                                              width: 20,
+                                              height: 20),
                                       SizedBox(height: 8),
                                       Text('加热状态').simpleStyle(
                                           13, AppColors.blue133,
@@ -579,7 +807,12 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
                                           Column(
                                             children: [
                                               Image.asset(
-                                                  'ic_unselect.png'.imagePath,
+                                                  ((detail?.state?.errorStop ??
+                                                                  0) ==
+                                                              1
+                                                          ? 'ic_select.png'
+                                                          : 'ic_unselect.png')
+                                                      .imagePath,
                                                   width: 20,
                                                   height: 20),
                                               const SizedBox(height: 8),
@@ -604,7 +837,12 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
                                           Column(
                                             children: [
                                               Image.asset(
-                                                  'ic_unselect.png'.imagePath,
+                                                  ((detail?.state?.restFlag ??
+                                                                  0) ==
+                                                              1
+                                                          ? 'ic_select.png'
+                                                          : 'ic_unselect.png')
+                                                      .imagePath,
                                                   width: 20,
                                                   height: 20),
                                               const SizedBox(height: 8),
@@ -661,8 +899,18 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
                                     const SizedBox(width: 18),
                                     Row(
                                       children: [
-                                        Image.asset('ic_jr_kai.png'.imagePath,
-                                            width: 12, height: 12),
+                                        Image.asset(
+                                            (((detail?.state?.ctrlMode ?? 0) ==
+                                                            1) &&
+                                                        ((detail?.state
+                                                                    ?.hotState4 ??
+                                                                0) ==
+                                                            1)
+                                                    ? 'ic_jr_kai.png'
+                                                    : 'ic_jr_guan.png')
+                                                .imagePath,
+                                            width: 12,
+                                            height: 12),
                                         SizedBox(width: 2),
                                         Text('开').simpleStyle(
                                             12, HexColor('#051F34')),
@@ -671,8 +919,18 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
                                     SizedBox(width: 12),
                                     Row(
                                       children: [
-                                        Image.asset('ic_jr_guan.png'.imagePath,
-                                            width: 12, height: 12),
+                                        Image.asset(
+                                            (((detail?.state?.ctrlMode ?? 0) ==
+                                                            1) &&
+                                                        ((detail?.state
+                                                                    ?.hotState4 ??
+                                                                0) ==
+                                                            1)
+                                                    ? 'ic_jr_guan.png'
+                                                    : 'ic_jr_kai.png')
+                                                .imagePath,
+                                            width: 12,
+                                            height: 12),
                                         SizedBox(width: 2),
                                         Text('关').simpleStyle(
                                             12, HexColor('#051F34')),
@@ -767,16 +1025,34 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
                                   ),
                                 ),
                                 const SizedBox(width: 22),
-                                Container(
-                                  width: 85,
-                                  height: 35,
-                                  decoration: BoxDecoration(
-                                      color: AppColors.blue06,
-                                      borderRadius: BorderRadius.circular(6)),
-                                  alignment: Alignment.center,
-                                  child: Text('确认').simpleStyle(
-                                      14, AppColors.white,
-                                      isBold: true),
+                                InkWell(
+                                  onTap: () async {
+                                    final heatingOn =
+                                        ((detail?.state?.ctrlMode ?? 0) == 1) &&
+                                            ((detail?.state?.hotState4 ?? 0) ==
+                                                1);
+                                    final hotTime = _heatingMinutes.round();
+                                    final text = _fzController.text.trim();
+                                    final iSet = text.isEmpty
+                                        ? null
+                                        : num.tryParse(text);
+                                    await _submitHeatingSettings(
+                                      heatingOn: heatingOn,
+                                      hotTime: hotTime,
+                                      iSet: iSet,
+                                    );
+                                  },
+                                  child: Container(
+                                    width: 85,
+                                    height: 35,
+                                    decoration: BoxDecoration(
+                                        color: AppColors.blue06,
+                                        borderRadius: BorderRadius.circular(6)),
+                                    alignment: Alignment.center,
+                                    child: Text('确认').simpleStyle(
+                                        14, AppColors.white,
+                                        isBold: true),
+                                  ),
                                 )
                               ])
                             ],
@@ -808,14 +1084,14 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
                                 (cons.maxHeight - gap * (rows - 1)) / rows;
                             final ratio = itemW / itemH;
                             final tiles = [
-                              '环境温度报警',
-                              '测温仪温度报警',
-                              '电气柜温度报警',
-                              'UPS告警',
-                              '23OV告警',
-                              '2V/H告警',
-                              '3相负载报警',
-                              '未知事件',
+                              '环网通讯故障',
+                              'UPS电源',
+                              '测冰设备通讯故障',
+                              '1#叶片电源故障',
+                              '电流均值故障',
+                              '2#叶片电源故障',
+                              '接触器粘连故障',
+                              '3#叶片电源故障',
                             ];
                             return GridView.count(
                               shrinkWrap: false,
@@ -825,7 +1101,9 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
                               mainAxisSpacing: gap,
                               childAspectRatio: ratio,
                               children: tiles
-                                  .map((t) => Container(
+                                  .asMap()
+                                  .entries
+                                  .map((e) => Container(
                                         decoration: BoxDecoration(
                                           color: AppColors.blueE9,
                                           borderRadius:
@@ -834,12 +1112,18 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
                                         child: Row(
                                           children: [
                                             const SizedBox(width: 12),
-                                            Image.asset('ic_jr.png'.imagePath,
-                                                width: 12, height: 12),
+                                            Image.asset(
+                                                (_faultOn(e.key)
+                                                        ? 'ic_jr.png'
+                                                        : 'ic_jr_guan.png')
+                                                    .imagePath,
+                                                width: 12,
+                                                height: 12),
                                             const SizedBox(width: 6),
                                             Expanded(
-                                                child: Text(t).simpleStyle(
-                                                    10, AppColors.blue133)),
+                                                child: Text(e.value)
+                                                    .simpleStyle(
+                                                        10, AppColors.blue133)),
                                           ],
                                         ),
                                       ))
@@ -872,31 +1156,63 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
                         Expanded(
                           flex: 150,
                           child: _grid3x3([
-                            {'title': '环境温度', 'value': '26', 'unit': '℃'},
-                            {'title': '风速', 'value': '6.75', 'unit': 'm/s'},
-                            {'title': '用户量', 'value': '5436', 'unit': 'kWh'},
-                            {'title': '1号叶片电流', 'value': '36', 'unit': 'A'},
-                            {'title': '2号叶片电流', 'value': '12', 'unit': 'A'},
-                            {'title': '3号叶片电流', 'value': '24', 'unit': 'A'},
-                            {'title': '瞬时功率', 'value': '1870', 'unit': 'kW'},
-                            {'title': '转速', 'value': '24', 'unit': 'A'},
-                            {'title': '累计功率', 'value': '908', 'unit': 'kW'},
+                            {
+                              'title': '环境温度',
+                              'value':
+                                  (detail?.state?.envTemp)?.toString() ?? '-',
+                              'unit': '℃'
+                            },
+                            {
+                              'title': '风速',
+                              'value':
+                                  (detail?.state?.windSpeed)?.toString() ?? '-',
+                              'unit': 'm/s'
+                            },
+                            {'title': '用电量', 'value': '-', 'unit': 'kWh'},
+                            {
+                              'title': '1号叶片电流',
+                              'value': _bladeCurrent(1),
+                              'unit': 'A'
+                            },
+                            {
+                              'title': '2号叶片电流',
+                              'value': _bladeCurrent(2),
+                              'unit': 'A'
+                            },
+                            {
+                              'title': '3号叶片电流',
+                              'value': _bladeCurrent(3),
+                              'unit': 'A'
+                            },
+                            {
+                              'title': '瞬时功率',
+                              'value': powerValueUnit(detail?.state).value,
+                              'unit': powerValueUnit(detail?.state).unit
+                            },
+                            {
+                              'title': '转速',
+                              'value':
+                                  (detail?.state?.rotorSpeed)?.toString() ??
+                                      '-',
+                              'unit': 'A'
+                            },
+                            {'title': '累计功率', 'value': '-', 'unit': 'kW'},
                           ]),
                         ),
                         const SizedBox(height: 6),
                         Expanded(
                           flex: 140,
-                          child: _leafStatus('1号叶片状态'),
+                          child: _leafStatus('1号叶片状态', 0),
                         ),
                         const SizedBox(height: 12),
                         Expanded(
                           flex: 140,
-                          child: _leafStatus('2号叶片状态'),
+                          child: _leafStatus('2号叶片状态', 1),
                         ),
                         const SizedBox(height: 12),
                         Expanded(
                           flex: 140,
-                          child: _leafStatus('3号叶片状态'),
+                          child: _leafStatus('3号叶片状态', 2),
                         ),
                       ],
                     ),
@@ -924,65 +1240,84 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
                                     borderRadius: BorderRadius.circular(6),
                                   ),
                                   child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 12,vertical: 12),
-                                    child: Column(
-                                      crossAxisAlignment:
-                                      CrossAxisAlignment.center,
-                                      children: [
-                                        Text('————  控制柜事件  ———').simpleStyle(
-                                            13, AppColors.blue06,
-                                            ),
-                                        const SizedBox(height: 8),
-                                        Expanded(
-                                          child: LayoutBuilder(builder: (context, cons) {
-                                            const cross = 2;
-                                            const rows = 3;
-                                            const gap = 8.0;
-                                            final itemW =
-                                                (cons.maxWidth - gap * (cross - 1)) / cross;
-                                            final itemH =
-                                                (cons.maxHeight - gap * (rows - 1)) / rows;
-                                            final ratio = itemW / itemH;
-                                            final tiles = [
-                                              '机舱230V断路器',
-                                              '柜内加热电源',
-                                              '柜内加热电源',
-                                              '远程模式',
-                                              '主接触器控制电源',
-                                            ];
-                                            return GridView.count(
-                                              shrinkWrap: false,
-                                              physics: const NeverScrollableScrollPhysics(),
-                                              crossAxisCount: cross,
-                                              crossAxisSpacing: gap,
-                                              mainAxisSpacing: gap,
-                                              childAspectRatio: ratio,
-                                              children: tiles
-                                                  .map((t) => Container(
-                                                decoration: BoxDecoration(
-                                                  color: HexColor('#C1D8F0'),
-                                                  borderRadius: BorderRadius.circular(3),
-                                                ),
-                                                child: Row(
-                                                  children: [
-                                                    const SizedBox(width: 12),
-                                                    Image.asset('ic_jr.png'.imagePath,
-                                                        width: 12, height: 12),
-                                                    const SizedBox(width: 6),
-                                                    Expanded(
-                                                        child: Text(t).simpleStyle(
-                                                            10, AppColors.blue133)),
-                                                  ],
-                                                ),
-                                              ))
-                                                  .toList(),
-                                            );
-                                          }),
-                                        )
-                                      ],
-                                    )
-                                  ),
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 12, vertical: 12),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.center,
+                                        children: [
+                                          Text('————  除冰控制柜  ———').simpleStyle(
+                                            13,
+                                            AppColors.blue06,
+                                          ),
+                                          const SizedBox(height: 8),
+                                          Expanded(
+                                            child: LayoutBuilder(
+                                                builder: (context, cons) {
+                                              const cross = 2;
+                                              const rows = 3;
+                                              const gap = 8.0;
+                                              final itemW = (cons.maxWidth -
+                                                      gap * (cross - 1)) /
+                                                  cross;
+                                              final itemH = (cons.maxHeight -
+                                                      gap * (rows - 1)) /
+                                                  rows;
+                                              final ratio = itemW / itemH;
+                                              final tiles = [
+                                                '柜内加热电源',
+                                                '急停按钮',
+                                                '远程模式',
+                                                '主接触器控制电源',
+                                                '机舱230V断路器'
+                                              ];
+                                              return GridView.count(
+                                                shrinkWrap: false,
+                                                physics:
+                                                    const NeverScrollableScrollPhysics(),
+                                                crossAxisCount: cross,
+                                                crossAxisSpacing: gap,
+                                                mainAxisSpacing: gap,
+                                                childAspectRatio: ratio,
+                                                children: tiles
+                                                    .map((t) => Container(
+                                                          decoration:
+                                                              BoxDecoration(
+                                                            color: HexColor(
+                                                                '#C1D8F0'),
+                                                            borderRadius:
+                                                                BorderRadius
+                                                                    .circular(
+                                                                        3),
+                                                          ),
+                                                          child: Row(
+                                                            children: [
+                                                              const SizedBox(
+                                                                  width: 12),
+                                                              Image.asset(
+                                                                  (_controlOn(t)
+                                                                          ? 'ic_green_cicle.png'
+                                                                          : 'ic_jr_guan.png')
+                                                                      .imagePath,
+                                                                  width: 12,
+                                                                  height: 12),
+                                                              const SizedBox(
+                                                                  width: 6),
+                                                              Expanded(
+                                                                  child: Text(t)
+                                                                      .simpleStyle(
+                                                                          10,
+                                                                          AppColors
+                                                                              .blue133)),
+                                                            ],
+                                                          ),
+                                                        ))
+                                                    .toList(),
+                                              );
+                                            }),
+                                          )
+                                        ],
+                                      )),
                                 ),
                               ),
                               const SizedBox(width: 12),
@@ -995,38 +1330,45 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
                                   ),
                                   child: Padding(
                                       padding: const EdgeInsets.symmetric(
-                                          horizontal: 12,vertical: 12),
+                                          horizontal: 12, vertical: 12),
                                       child: Column(
                                         crossAxisAlignment:
-                                        CrossAxisAlignment.center,
+                                            CrossAxisAlignment.center,
                                         children: [
                                           Text('— 除冰控制柜 —').simpleStyle(
-                                            13, AppColors.blue06,
+                                            13,
+                                            AppColors.blue06,
                                           ),
                                           const SizedBox(height: 8),
                                           Expanded(
-                                            child:Container(
+                                            child: Container(
                                               decoration: BoxDecoration(
                                                 color: HexColor('#C1D8F0'),
-                                                borderRadius: BorderRadius.circular(3),
+                                                borderRadius:
+                                                    BorderRadius.circular(3),
                                               ),
                                               child: Row(
-                                                mainAxisAlignment: MainAxisAlignment. center,
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment.center,
                                                 children: [
-                                                  Text('25').simpleStyle(
-                                                    35, AppColors.blue06,
+                                                  Text((detail?.state?.envTemp)
+                                                              ?.toString() ??
+                                                          '-')
+                                                      .simpleStyle(
+                                                    35,
+                                                    AppColors.blue06,
                                                     isBold: true,
                                                   ),
                                                   Text('℃').simpleStyle(
-                                                    15, HexColor('#051F34'),
+                                                    15,
+                                                    HexColor('#051F34'),
                                                   ),
                                                 ],
                                               ),
                                             ),
                                           )
                                         ],
-                                      )
-                                  ),
+                                      )),
                                 ),
                               ),
                               const SizedBox(width: 12),
@@ -1039,24 +1381,28 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
                                   ),
                                   child: Padding(
                                       padding: const EdgeInsets.symmetric(
-                                          horizontal: 12,vertical: 12),
+                                          horizontal: 12, vertical: 12),
                                       child: Column(
                                         crossAxisAlignment:
-                                        CrossAxisAlignment.center,
+                                            CrossAxisAlignment.center,
                                         children: [
                                           Text('— 软件版本 —').simpleStyle(
-                                            13, AppColors.blue06,
+                                            13,
+                                            AppColors.blue06,
                                           ),
                                           const SizedBox(height: 8),
                                           Expanded(
-                                            child:LayoutBuilder(builder: (context, cons) {
+                                            child: LayoutBuilder(
+                                                builder: (context, cons) {
                                               const cross = 1;
                                               const rows = 3;
                                               const gap = 8.0;
-                                              final itemW =
-                                                  (cons.maxWidth - gap * (cross - 1)) / cross;
-                                              final itemH =
-                                                  (cons.maxHeight - gap * (rows - 1)) / rows;
+                                              final itemW = (cons.maxWidth -
+                                                      gap * (cross - 1)) /
+                                                  cross;
+                                              final itemH = (cons.maxHeight -
+                                                      gap * (rows - 1)) /
+                                                  rows;
                                               final ratio = itemW / itemH;
                                               final tiles = [
                                                 '主控程序版本号：',
@@ -1065,36 +1411,54 @@ class _DeviceDetailPageState extends State<DeviceDetailPage> {
                                               ];
                                               return GridView.count(
                                                 shrinkWrap: false,
-                                                physics: const NeverScrollableScrollPhysics(),
+                                                physics:
+                                                    const NeverScrollableScrollPhysics(),
                                                 crossAxisCount: cross,
                                                 crossAxisSpacing: gap,
                                                 mainAxisSpacing: gap,
                                                 childAspectRatio: ratio,
                                                 children: tiles
                                                     .map((t) => Container(
-                                                  decoration: BoxDecoration(
-                                                    color: HexColor('#C1D8F0'),
-                                                    borderRadius: BorderRadius.circular(3),
-                                                  ),
-                                                  child: Padding(
-                                                    padding: const EdgeInsets.symmetric(
-                                                      horizontal: 8),
-                                                    child: Row(
-                                                      children: [
-                                                        Text(t).simpleStyle(10, AppColors.blue133),
-                                                        Spacer(),
-                                                        Text(tiles.indexOf(t)==1?'ZK_95':'ZK_9527_01').simpleStyle(10, AppColors.blue133),
-                                                      ],
-                                                    ),
-                                                  ),
-                                                ))
+                                                          decoration:
+                                                              BoxDecoration(
+                                                            color: HexColor(
+                                                                '#C1D8F0'),
+                                                            borderRadius:
+                                                                BorderRadius
+                                                                    .circular(
+                                                                        3),
+                                                          ),
+                                                          child: Padding(
+                                                            padding:
+                                                                const EdgeInsets
+                                                                    .symmetric(
+                                                                    horizontal:
+                                                                        8),
+                                                            child: Row(
+                                                              children: [
+                                                                Text(t).simpleStyle(
+                                                                    10,
+                                                                    AppColors
+                                                                        .blue133),
+                                                                Spacer(),
+                                                                Text(tiles.indexOf(t) ==
+                                                                            1
+                                                                        ? 'ZK_95'
+                                                                        : 'ZK_9527_01')
+                                                                    .simpleStyle(
+                                                                        10,
+                                                                        AppColors
+                                                                            .blue133),
+                                                              ],
+                                                            ),
+                                                          ),
+                                                        ))
                                                     .toList(),
                                               );
                                             }),
                                           )
                                         ],
-                                      )
-                                  ),
+                                      )),
                                 ),
                               ),
                             ],

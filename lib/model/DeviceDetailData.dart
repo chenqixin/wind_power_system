@@ -420,9 +420,13 @@ class State {
     this.envHumidity,
     this.errorStop,
     this.restFlag,
+    this.envHot,
+    this.hotAll,
+    this.ctrlMode,
     this.hotState1,
     this.hotState2,
     this.hotState3,
+    this.hotState4,
     this.hotTime,
     this.iSet,
     this.rotorSpeed,
@@ -446,9 +450,13 @@ class State {
     envHumidity = json['Env_humidity'];
     errorStop = json['Error_stop'];
     restFlag = json['Rest_flag'];
+    envHot = json['Env_hot'];
+    hotAll = json['HOT_All'];
+    ctrlMode = json['Ctrl_Mode'];
     hotState1 = json['Hot_state1'];
     hotState2 = json['Hot_state2'];
     hotState3 = json['Hot_state3'];
+    hotState4 = json['Hot_state4'];
     hotTime = json['Hot_time'];
     iSet = json['I_set'];
     rotorSpeed = json['rotor_speed'];
@@ -501,6 +509,15 @@ class State {
   /// 复位信号
   num? restFlag;
 
+  /// 柜内加热电源工作状态
+  num? envHot;
+
+  /// 主接触器状态
+  num? hotAll;
+
+  /// 控制模式（远程/本地）
+  num? ctrlMode;
+
   /// 叶片 1 当前加热状态
   num? hotState1;
 
@@ -509,6 +526,8 @@ class State {
 
   /// 叶片 3 当前加热状态
   num? hotState3;
+
+  num? hotState4;
 
   /// 加热时长
   num? hotTime;
@@ -542,9 +561,13 @@ class State {
     map['Env_humidity'] = envHumidity;
     map['Error_stop'] = errorStop;
     map['Rest_flag'] = restFlag;
+    map['Env_hot'] = envHot;
+    map['HOT_All'] = hotAll;
+    map['Ctrl_Mode'] = ctrlMode;
     map['Hot_state1'] = hotState1;
     map['Hot_state2'] = hotState2;
     map['Hot_state3'] = hotState3;
+    map['Hot_state4'] = hotState4;
     map['Hot_time'] = hotTime;
     map['I_set'] = iSet;
     map['rotor_speed'] = rotorSpeed;

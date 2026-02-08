@@ -18,6 +18,7 @@ import 'package:wind_power_system/content_navigator.dart';
 import 'package:dash_painter/dash_painter.dart';
 import 'package:wind_power_system/network/http/api_util.dart';
 import 'package:wind_power_system/view/charts/realtime_thickness_chart.dart';
+import 'package:wind_power_system/model/DeviceDetailData.dart' as model;
 
 class DeviceRealTimePage extends StatefulWidget {
   final String sn;
@@ -32,6 +33,8 @@ class DeviceRealTimePage extends StatefulWidget {
 
 class _DeviceRealTimePageState extends State<DeviceRealTimePage> {
   final Random _rnd = Random();
+  model.DeviceDetailData? detail;
+  Timer? _pollTimer;
 
   Widget _title(String text) {
     return Row(
@@ -96,6 +99,35 @@ class _DeviceRealTimePageState extends State<DeviceRealTimePage> {
       },
     );
     return completer.future;
+  }
+
+  void getSNDetail(String sn, String ip, int port) {
+    Api.get(
+      "sn/detail",
+      successCallback: (data) {
+        final d = model.DeviceDetailData.fromJson(data);
+        if (!mounted) return;
+        setState(() {
+          detail = d;
+        });
+      },
+      failCallback: (code, msg) {},
+    );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    getSNDetail(widget.sn, "172.0.0.1", 77);
+    _pollTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+      getSNDetail(widget.sn, "172.0.0.1", 77);
+    });
+  }
+
+  @override
+  void dispose() {
+    _pollTimer?.cancel();
+    super.dispose();
   }
 
   @override
@@ -225,6 +257,7 @@ class _DeviceRealTimePageState extends State<DeviceRealTimePage> {
                                         child: RealtimeThicknessChart(
                                           onRequest: () =>
                                               _requestBladeThickness(2),
+                                          refreshSeconds: 3,
                                         ),
                                       ),
                                     )
@@ -262,6 +295,7 @@ class _DeviceRealTimePageState extends State<DeviceRealTimePage> {
                                         child: RealtimeThicknessChart(
                                           onRequest: () =>
                                               _requestBladeThickness(2),
+                                          refreshSeconds: 3,
                                         ),
                                       ),
                                     )
@@ -300,6 +334,7 @@ class _DeviceRealTimePageState extends State<DeviceRealTimePage> {
                                         child: RealtimeThicknessChart(
                                           onRequest: () =>
                                               _requestBladeThickness(2),
+                                          refreshSeconds: 3,
                                         ),
                                       ),
                                     ),

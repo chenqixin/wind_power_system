@@ -27,12 +27,16 @@ class SensorHistoryData extends Table {
   RealColumn get envHumidity => real().nullable()();
   IntColumn get errorStop => integer().nullable()();
   IntColumn get restFlag => integer().nullable()();
+  IntColumn get envHot => integer().nullable()();
+  IntColumn get hotAll => integer().nullable()();
+  IntColumn get ctrlMode => integer().nullable()();
   RealColumn get windSpeed => real().nullable()();
   RealColumn get rotorSpeed => real().nullable()();
   IntColumn get iceState => integer().nullable()();
   IntColumn get hotState1 => integer().nullable()();
   IntColumn get hotState2 => integer().nullable()();
   IntColumn get hotState3 => integer().nullable()();
+  IntColumn get hotState4 => integer().nullable()();
   IntColumn get hotTime => integer().nullable()();
   RealColumn get iSet => real().nullable()();
   RealColumn get temperature => real().nullable()();
@@ -102,12 +106,16 @@ String sensorHistoryCreateSql(String table) {
       'envHumidity REAL NULL, '
       'errorStop INTEGER NULL, '
       'restFlag INTEGER NULL, '
+      'envHot INTEGER NULL, '
+      'hotAll INTEGER NULL, '
+      'ctrlMode INTEGER NULL, '
       'windSpeed REAL NULL, '
       'rotorSpeed REAL NULL, '
       'iceState INTEGER NULL, '
       'hotState1 INTEGER NULL, '
       'hotState2 INTEGER NULL, '
       'hotState3 INTEGER NULL, '
+      'hotState4 INTEGER NULL, '
       'hotTime INTEGER NULL, '
       'iSet REAL NULL, '
       'temperature REAL NULL, '

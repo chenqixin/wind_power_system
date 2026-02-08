@@ -127,6 +127,18 @@ class AppDatabase {
       await db.execute(
           'ALTER TABLE ' + table + ' ADD COLUMN restFlag INTEGER NULL');
     }
+    if (!cols.contains('envHot')) {
+      await db
+          .execute('ALTER TABLE ' + table + ' ADD COLUMN envHot INTEGER NULL');
+    }
+    if (!cols.contains('hotAll')) {
+      await db
+          .execute('ALTER TABLE ' + table + ' ADD COLUMN hotAll INTEGER NULL');
+    }
+    if (!cols.contains('ctrlMode')) {
+      await db.execute(
+          'ALTER TABLE ' + table + ' ADD COLUMN ctrlMode INTEGER NULL');
+    }
     if (!cols.contains('windSpeed')) {
       await db
           .execute('ALTER TABLE ' + table + ' ADD COLUMN windSpeed REAL NULL');
@@ -150,6 +162,10 @@ class AppDatabase {
     if (!cols.contains('hotState3')) {
       await db.execute(
           'ALTER TABLE ' + table + ' ADD COLUMN hotState3 INTEGER NULL');
+    }
+    if (!cols.contains('hotState4')) {
+      await db.execute(
+          'ALTER TABLE ' + table + ' ADD COLUMN hotState4 INTEGER NULL');
     }
     if (!cols.contains('hotTime')) {
       await db
@@ -497,12 +513,16 @@ class AppDatabase {
         'envHumidity': st?.envHumidity,
         'errorStop': st?.errorStop?.toInt(),
         'restFlag': st?.restFlag?.toInt(),
+        'envHot': st?.envHot?.toInt(),
+        'hotAll': st?.hotAll?.toInt(),
+        'ctrlMode': st?.ctrlMode?.toInt(),
         'windSpeed': st?.windSpeed,
         'rotorSpeed': st?.rotorSpeed,
         'iceState': st?.iceState,
         'hotState1': st?.hotState1,
         'hotState2': st?.hotState2,
         'hotState3': st?.hotState3,
+        'hotState4': st?.hotState4,
         'hotTime': st?.hotTime?.toInt(),
         'iSet': st?.iSet,
         // Blade1

@@ -23,6 +23,7 @@ import 'add_user_dialog.dart';
 import 'add_sn_dialog.dart';
 import 'package:wind_power_system/core/utils/fileutils.dart';
 import 'package:wind_power_system/core/utils/print_utils.dart';
+import 'package:wind_power_system/core/utils/power_utils.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -73,24 +74,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  //计算功率
-  ({String value, String unit}) _powerValueUnit(WindItem it) {
-    final s = it.details?.state;
-    if (s == null) return (value: '-', unit: '');
-    final ai = (s.aI ?? 0).toDouble();
-    final bi = (s.bI ?? 0).toDouble();
-    final ci = (s.cI ?? 0).toDouble();
-    final av = (s.aV ?? 0).toDouble();
-    final bv = (s.bV ?? 0).toDouble();
-    final cv = (s.cV ?? 0).toDouble();
-    final p = ai * av + bi * bv + ci * cv;
-    if (p >= 1000) {
-      return (value: (p / 1000).toStringAsFixed(2), unit: 'kw');
-    } else {
-      return (value: p.toStringAsFixed(2), unit: 'W');
-    }
-  }
-
   String _statusText(WindItem it) {
     final s = it.details?.state;
     final ice = (s?.iceState ?? 0) == 1;
@@ -109,7 +92,7 @@ class _HomePageState extends State<HomePage> {
   ({String value, String unit}) _totalPowerValueUnit() {
     double sumW = 0.0;
     for (final it in items) {
-      final res = _powerValueUnit(it);
+      final res = powerValueUnit(it.details?.state);
       final v = double.tryParse(res.value);
       if (v == null) continue;
       if (res.unit.toLowerCase() == 'kw') {
@@ -301,7 +284,7 @@ class _HomePageState extends State<HomePage> {
                 ).simpleStyle(22, AppColors.blue135, isBold: true),
                 _buildHovelItem(1, '设备型号：', it.deviceSn),
                 _buildHovelItem(0, '加热功率：',
-                    '${_powerValueUnit(it).value} ${_powerValueUnit(it).unit}'),
+                    '${powerValueUnit(it.details?.state).value} ${powerValueUnit(it.details?.state).unit}'),
                 _buildHovelItem(1, '状态分类：：', '-'),
                 _buildHovelItem(0, '叶片1平均温度：', blade1T),
                 _buildHovelItem(1, '叶片2平均温度：', blade2T),
@@ -570,7 +553,8 @@ class _HomePageState extends State<HomePage> {
                                                   child: Row(
                                                     children: [
                                                       Text(
-                                                        _powerValueUnit(it)
+                                                        powerValueUnit(it
+                                                                .details?.state)
                                                             .value,
                                                         style: textCon,
                                                       ),
@@ -578,7 +562,8 @@ class _HomePageState extends State<HomePage> {
                                                         width: 2,
                                                       ),
                                                       Text(
-                                                        _powerValueUnit(it)
+                                                        powerValueUnit(it
+                                                                .details?.state)
                                                             .unit,
                                                         style: TextStyle(
                                                           fontSize: 12,
