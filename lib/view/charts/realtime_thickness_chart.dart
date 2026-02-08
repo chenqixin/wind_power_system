@@ -47,7 +47,19 @@ class _RealtimeThicknessChartState extends State<RealtimeThicknessChart> {
       activationMode: ActivationMode.singleTap,
       tooltipSettings: const InteractiveTooltip(),
     );
+    _prefillDataWithZeros();
     _startTimer();
+  }
+
+  void _prefillDataWithZeros() {
+    final now = DateTime.now();
+    final start = now
+        .subtract(Duration(seconds: widget.refreshSeconds * widget.maxPoints));
+    _data.clear();
+    for (int i = 0; i < widget.maxPoints; i++) {
+      final t = start.add(Duration(seconds: widget.refreshSeconds * i));
+      _data.add(_Point(t, 0.0, 0.0, 0.0));
+    }
   }
 
   void _startTimer() {
@@ -103,7 +115,7 @@ class _RealtimeThicknessChartState extends State<RealtimeThicknessChart> {
       legend: const Legend(isVisible: false, position: LegendPosition.bottom),
       primaryXAxis: DateTimeAxis(
         intervalType: DateTimeIntervalType.seconds,
-        interval: 5,
+        interval: widget.refreshSeconds.toDouble(),
         autoScrollingDelta: 50,
         autoScrollingMode: AutoScrollingMode.end,
         enableAutoIntervalOnZooming: false,
