@@ -17,8 +17,8 @@ import 'package:wind_power_system/genernal/extension/text.dart';
 import 'package:wind_power_system/content_navigator.dart';
 import 'package:dash_painter/dash_painter.dart';
 import 'package:wind_power_system/network/http/api_util.dart';
-import 'package:wind_power_system/view/charts/realtime_thickness_chart.dart';
 import 'package:wind_power_system/model/DeviceDetailData.dart' as model;
+import 'package:wind_power_system/view/charts/realtime_thickness_chart.dart';
 
 class DeviceRealTimePage extends StatefulWidget {
   final String sn;
@@ -59,49 +59,66 @@ class _DeviceRealTimePageState extends State<DeviceRealTimePage> {
     );
   }
 
-  Future<List<double>> _requestBladeThickness(int blade) async {
-    final completer = Completer<List<double>>();
-    await Api.get(
-      'device/realtime/thickness',
-      params: {
-        'sn': widget.sn,
-        'blade': blade,
-      },
-      successCallback: (data) {
-        try {
-          if (data is Map<String, dynamic>) {
-            final root = (data['root'] as num?)?.toDouble() ?? 0;
-            final mid = (data['mid'] as num?)?.toDouble() ?? 0;
-            final tip = (data['tip'] as num?)?.toDouble() ?? 0;
-            completer.complete([root, mid, tip]);
-            return;
-          }
-          if (data is List && data.length >= 3) {
-            final root = (data[0] as num).toDouble();
-            final mid = (data[1] as num).toDouble();
-            final tip = (data[2] as num).toDouble();
-            completer.complete([root, mid, tip]);
-            return;
-          }
-        } catch (_) {}
-        completer.complete([
-          5 + _rnd.nextDouble() * 10,
-          6 + _rnd.nextDouble() * 9,
-          4 + _rnd.nextDouble() * 8,
-        ]);
-      },
-      failCallback: (_, __) {
-        completer.complete([
-          5 + _rnd.nextDouble() * 10,
-          6 + _rnd.nextDouble() * 9,
-          4 + _rnd.nextDouble() * 8,
-        ]);
-      },
-    );
-    return completer.future;
+  Future<List<double>> _requestBladeThickness(int blade,int type) async {
+    final wd = detail?.winddata;
+    if(type==1){
+      num? up;
+      num? mid;
+      num? down;
+      switch (blade) {
+        case 1:
+          up = wd?.blade1?.tickUp;
+          mid = wd?.blade1?.tickMid;
+          down = wd?.blade1?.tickDown;
+          break;
+        case 2:
+          up = wd?.blade2?.tickUp;
+          mid = wd?.blade2?.tickMid;
+          down = wd?.blade2?.tickDown;
+          break;
+        case 3:
+          up = wd?.blade3?.tickUp;
+          mid = wd?.blade3?.tickMid;
+          down = wd?.blade3?.tickDown;
+          break;
+      }
+      if (up != null && mid != null && down != null) {
+        return [down.toDouble(), mid.toDouble(), up.toDouble()];
+      }
+    }else{
+      num? up;
+      num? mid;
+      num? down;
+      switch (blade) {
+        case 1:
+          up = wd?.blade1?.tempUp;
+          mid = wd?.blade1?.tempMid;
+          down = wd?.blade1?.tempDown;
+          break;
+        case 2:
+          up = wd?.blade2?.tempUp;
+          mid = wd?.blade2?.tempMid;
+          down = wd?.blade2?.tempDown;
+          break;
+        case 3:
+          up = wd?.blade3?.tempUp;
+          mid = wd?.blade3?.tempMid;
+          down = wd?.blade3?.tempDown;
+          break;
+      }
+      if (up != null && mid != null && down != null) {
+        return [down.toDouble(), mid.toDouble(), up.toDouble()];
+      }
+    }
+
+    return [
+      0.0,
+      0.0,
+      0.0,
+    ];
   }
 
-  void getSNDetail(String sn, String ip, int port) {
+  void getSNDetail() {
     Api.get(
       "sn/detail",
       successCallback: (data) {
@@ -118,10 +135,10 @@ class _DeviceRealTimePageState extends State<DeviceRealTimePage> {
   @override
   void initState() {
     super.initState();
-    getSNDetail(widget.sn, "172.0.0.1", 77);
-    _pollTimer = Timer.periodic(const Duration(seconds: 3), (_) {
-      getSNDetail(widget.sn, "172.0.0.1", 77);
-    });
+    getSNDetail();
+    _pollTimer?.cancel();
+    _pollTimer =
+        Timer.periodic(const Duration(seconds: 2), (_) => getSNDetail());
   }
 
   @override
@@ -256,8 +273,7 @@ class _DeviceRealTimePageState extends State<DeviceRealTimePage> {
                                             horizontal: 12, vertical: 1),
                                         child: RealtimeThicknessChart(
                                           onRequest: () =>
-                                              _requestBladeThickness(2),
-                                          refreshSeconds: 3,
+                                              _requestBladeThickness(1,1),
                                         ),
                                       ),
                                     )
@@ -294,8 +310,7 @@ class _DeviceRealTimePageState extends State<DeviceRealTimePage> {
                                             horizontal: 12, vertical: 1),
                                         child: RealtimeThicknessChart(
                                           onRequest: () =>
-                                              _requestBladeThickness(2),
-                                          refreshSeconds: 3,
+                                              _requestBladeThickness(2,1),
                                         ),
                                       ),
                                     )
@@ -333,8 +348,7 @@ class _DeviceRealTimePageState extends State<DeviceRealTimePage> {
                                             horizontal: 12, vertical: 1),
                                         child: RealtimeThicknessChart(
                                           onRequest: () =>
-                                              _requestBladeThickness(2),
-                                          refreshSeconds: 3,
+                                              _requestBladeThickness(3,1),
                                         ),
                                       ),
                                     ),
@@ -372,7 +386,17 @@ class _DeviceRealTimePageState extends State<DeviceRealTimePage> {
                                           //折线图
                                         ],
                                       ),
-                                    )
+                                    ),
+                                    Expanded(
+                                      child: Padding(
+                                        padding: EdgeInsets.symmetric(
+                                            horizontal: 12, vertical: 1),
+                                        child: RealtimeThicknessChart(
+                                          onRequest: () =>
+                                              _requestBladeThickness(1,2),
+                                        ),
+                                      ),
+                                    ),
                                   ],
                                 ),
                               ),
@@ -400,7 +424,17 @@ class _DeviceRealTimePageState extends State<DeviceRealTimePage> {
                                           //折线图
                                         ],
                                       ),
-                                    )
+                                    ),
+                                    Expanded(
+                                      child: Padding(
+                                        padding: EdgeInsets.symmetric(
+                                            horizontal: 12, vertical: 1),
+                                        child: RealtimeThicknessChart(
+                                          onRequest: () =>
+                                              _requestBladeThickness(2,2),
+                                        ),
+                                      ),
+                                    ),
                                   ],
                                 ),
                               ),
@@ -428,7 +462,17 @@ class _DeviceRealTimePageState extends State<DeviceRealTimePage> {
                                           //折线图
                                         ],
                                       ),
-                                    )
+                                    ),
+                                    Expanded(
+                                      child: Padding(
+                                        padding: EdgeInsets.symmetric(
+                                            horizontal: 12, vertical: 1),
+                                        child: RealtimeThicknessChart(
+                                          onRequest: () =>
+                                              _requestBladeThickness(3,2),
+                                        ),
+                                      ),
+                                    ),
                                   ],
                                 ),
                               ),
