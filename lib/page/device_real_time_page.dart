@@ -59,9 +59,9 @@ class _DeviceRealTimePageState extends State<DeviceRealTimePage> {
     );
   }
 
-  Future<List<double>> _requestBladeThickness(int blade,int type) async {
+  Future<List<double>> _requestBladeThickness(int blade, int type) async {
     final wd = detail?.winddata;
-    if(type==1){
+    if (type == 1) {
       num? up;
       num? mid;
       num? down;
@@ -85,7 +85,7 @@ class _DeviceRealTimePageState extends State<DeviceRealTimePage> {
       if (up != null && mid != null && down != null) {
         return [down.toDouble(), mid.toDouble(), up.toDouble()];
       }
-    }else{
+    } else {
       num? up;
       num? mid;
       num? down;
@@ -118,9 +118,9 @@ class _DeviceRealTimePageState extends State<DeviceRealTimePage> {
     ];
   }
 
-  void getSNDetail() {
-    Api.get(
-      "sn/detail",
+  void getSNDetail() async {
+    await Api.getDeviceDetailTcp(
+      sn: widget.sn,
       successCallback: (data) {
         final d = model.DeviceDetailData.fromJson(data);
         if (!mounted) return;
@@ -273,7 +273,7 @@ class _DeviceRealTimePageState extends State<DeviceRealTimePage> {
                                             horizontal: 12, vertical: 1),
                                         child: RealtimeThicknessChart(
                                           onRequest: () =>
-                                              _requestBladeThickness(1,1),
+                                              _requestBladeThickness(1, 1),
                                         ),
                                       ),
                                     )
@@ -310,7 +310,7 @@ class _DeviceRealTimePageState extends State<DeviceRealTimePage> {
                                             horizontal: 12, vertical: 1),
                                         child: RealtimeThicknessChart(
                                           onRequest: () =>
-                                              _requestBladeThickness(2,1),
+                                              _requestBladeThickness(2, 1),
                                         ),
                                       ),
                                     )
@@ -348,7 +348,7 @@ class _DeviceRealTimePageState extends State<DeviceRealTimePage> {
                                             horizontal: 12, vertical: 1),
                                         child: RealtimeThicknessChart(
                                           onRequest: () =>
-                                              _requestBladeThickness(3,1),
+                                              _requestBladeThickness(3, 1),
                                         ),
                                       ),
                                     ),
@@ -393,7 +393,7 @@ class _DeviceRealTimePageState extends State<DeviceRealTimePage> {
                                             horizontal: 12, vertical: 1),
                                         child: RealtimeThicknessChart(
                                           onRequest: () =>
-                                              _requestBladeThickness(1,2),
+                                              _requestBladeThickness(1, 2),
                                         ),
                                       ),
                                     ),
@@ -431,7 +431,7 @@ class _DeviceRealTimePageState extends State<DeviceRealTimePage> {
                                             horizontal: 12, vertical: 1),
                                         child: RealtimeThicknessChart(
                                           onRequest: () =>
-                                              _requestBladeThickness(2,2),
+                                              _requestBladeThickness(2, 2),
                                         ),
                                       ),
                                     ),
@@ -469,7 +469,7 @@ class _DeviceRealTimePageState extends State<DeviceRealTimePage> {
                                             horizontal: 12, vertical: 1),
                                         child: RealtimeThicknessChart(
                                           onRequest: () =>
-                                              _requestBladeThickness(3,2),
+                                              _requestBladeThickness(3, 2),
                                         ),
                                       ),
                                     ),

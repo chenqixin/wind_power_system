@@ -57,7 +57,7 @@ class _GlobalHeaderState extends State<GlobalHeader> {
         child: Row(
           children: [
             Text(
-              '',
+              '广西国电投坵坪风电场叶片除冰系统',
               style: TextStyle(
                 fontSize: 30,
                 fontWeight: FontWeight.w600,

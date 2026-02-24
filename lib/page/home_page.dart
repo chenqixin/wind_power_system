@@ -7,6 +7,7 @@
 library;
 
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:wind_power_system/core/constant/app_constant.dart';
@@ -17,10 +18,13 @@ import 'package:wind_power_system/genernal/extension/text.dart';
 import 'package:wind_power_system/db/app_database.dart';
 import 'package:wind_power_system/network/http/api_util.dart';
 import 'package:wind_power_system/model/DeviceDetailData.dart' as model;
+import 'package:wind_power_system/network/socket/web_socket_manager.dart';
+import 'package:wind_power_system/core/config/tcp_config.dart';
 
 import '../content_navigator.dart';
 import 'add_user_dialog.dart';
 import 'add_sn_dialog.dart';
+import 'error_alarm_dialog.dart';
 import 'package:wind_power_system/core/utils/fileutils.dart';
 import 'package:wind_power_system/core/utils/print_utils.dart';
 import 'package:wind_power_system/core/utils/power_utils.dart';
@@ -45,6 +49,8 @@ class WindItem {
 class _HomePageState extends State<HomePage> {
   List<WindItem> items = [];
   Timer? _pollTimer;
+  StreamSubscription<String>? _snErrorSub;
+  bool _errorDialogOpen = false;
 
   int? hoverIndex;
   OverlayEntry? _overlayEntry;
@@ -311,7 +317,13 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    _loadItems();
+    //_loadItems();
+    _loadItems().then((_) {
+      _listenSnError();
+      _syncClockOnce();
+    });
+    // Api.requestDevicePolling(sn: 'test', ip: '192.168.0.50', port: 5000);
+    //Api.requestDeviceDetail(sn: '1223', ip: '192.168.0.50', port: 5001);
     // _pollTimer =
     //     Timer.periodic(const Duration(minutes: 5), (_) => _pollDevices());
   }
@@ -348,8 +360,8 @@ class _HomePageState extends State<HomePage> {
       String sn, String ip, int port) async {
     final completer = Completer<model.DeviceDetailData?>();
     try {
-      await Api.get(
-        "sn/detail",
+      await Api.getDeviceDetailTcp(
+        sn: sn,
         successCallback: (data) {
           try {
             final detail = model.DeviceDetailData.fromJson(data);
@@ -368,10 +380,60 @@ class _HomePageState extends State<HomePage> {
     return await completer.future;
   }
 
+  Future<void> _syncClockOnce() async {
+    try {
+      await Api.syncClockTcp();
+    } catch (_) {}
+  }
+
+  Future<void> _listenSnError() async {
+    await TCPConfig.ensureLoaded();
+    await WebSocketManager().connectTcp(TCPConfig.host, TCPConfig.port,
+        timeout: const Duration(seconds: 5));
+    _snErrorSub?.cancel();
+    _snErrorSub = WebSocketManager().stream.listen((event) async {
+      try {
+        final obj = json.decode(event);
+        if (obj is Map<String, dynamic>) {
+          final cmdRaw = obj['cmd'];
+          final cmdStr = cmdRaw is String ? cmdRaw : '$cmdRaw';
+          if (cmdStr == 'error_detail') {
+            final rawCode = obj['code'];
+            final code =
+                rawCode is int ? rawCode : int.tryParse('$rawCode') ?? 0;
+            final msg = obj['message'] ?? obj['messge'];
+            final snVal = obj['sn'];
+            final sn = snVal is String ? snVal : '$snVal';
+            if (code == 200) {
+              if (_errorDialogOpen) return;
+              _errorDialogOpen = true;
+              final res = await showDialog(
+                context: context,
+                barrierDismissible: true,
+                builder: (_) => ErrorAlarmDialog(
+                  title: '故障报警',
+                  content: msg is String && msg.isNotEmpty
+                      ? msg
+                      : (sn.isNotEmpty ? '风机 $sn 发生故障报警' : '设备发生故障报警'),
+                ),
+              );
+              _errorDialogOpen = false;
+              if (res == true && sn.isNotEmpty) {
+                ContentNavigator.navigatorKey.currentState!
+                    .pushNamed('/detail', arguments: sn);
+              }
+            }
+          }
+        }
+      } catch (_) {}
+    });
+  }
+
   @override
   void dispose() {
     _pollTimer?.cancel();
     _hideTooltip();
+    _snErrorSub?.cancel();
     super.dispose();
   }
 

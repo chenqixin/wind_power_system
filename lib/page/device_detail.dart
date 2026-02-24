@@ -76,9 +76,9 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
   }
 
   //请求数据
-  void getSNDetail(String sn, String ip, int port) {
-    Api.get(
-      "sn/detail",
+  void getSNDetail(String sn) {
+    Api.getDeviceDetailTcp(
+      sn: sn,
       successCallback: (data) {
         final d = model.DeviceDetailData.fromJson(data);
         if (!mounted) return;
@@ -572,9 +572,9 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
   void initState() {
     // TODO: implement initState
     super.initState();
-    getSNDetail(widget.sn, "172.0.0.1", 77);
+    getSNDetail(widget.sn);
     _pollTimer = Timer.periodic(const Duration(seconds: 3), (_) {
-      getSNDetail(widget.sn, "172.0.0.1", 77);
+      getSNDetail(widget.sn);
     });
     _fzController.text = '';
     _blinkController = AnimationController(
@@ -624,7 +624,13 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
         return;
       }
     }
-    await AppNotice.show(title: '提示', content: '已提交');
+
+    await Api.submitManualHeatingTcp(
+      sn: widget.sn,
+      heatingOn: heatingOn,
+      hotTime: hotTime,
+      iSet: iSet,
+    );
   }
 
   @override
@@ -817,7 +823,11 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
                                                   height: 20),
                                               const SizedBox(height: 8),
                                               InkWell(
-                                                onTap: () {},
+                                                onTap: () async {
+                                                  await Api.emergencyStopTcp(
+                                                      sn: widget.sn);
+                                                  //getSNDetail(widget.sn);
+                                                },
                                                 child: Container(
                                                   width: 85,
                                                   height: 35,
@@ -847,7 +857,10 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
                                                   height: 20),
                                               const SizedBox(height: 8),
                                               InkWell(
-                                                onTap: () {},
+                                                onTap: () async {
+                                                  await Api.resetTcp(
+                                                      sn: widget.sn);
+                                                },
                                                 child: Container(
                                                   width: 85,
                                                   height: 35,
