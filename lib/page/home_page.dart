@@ -322,10 +322,6 @@ class _HomePageState extends State<HomePage> {
       _listenSnError();
       _syncClockOnce();
     });
-    // Api.requestDevicePolling(sn: 'test', ip: '192.168.0.50', port: 5000);
-    //Api.requestDeviceDetail(sn: '1223', ip: '192.168.0.50', port: 5001);
-    // _pollTimer =
-    //     Timer.periodic(const Duration(minutes: 5), (_) => _pollDevices());
   }
 
   Future<void> _loadItems() async {
@@ -337,6 +333,15 @@ class _HomePageState extends State<HomePage> {
       final port = (d['port'] as int?) ?? 0;
       final deviceSn = (d['deviceSn'] as String?) ?? sn;
       final detail = await getSNDetail(sn, ip, port);
+      if (detail != null) {
+        try {
+          await AppDatabase.insertRealtimeData(
+            sn: sn,
+            ts: DateTime.now(),
+            data: detail,
+          );
+        } catch (_) {}
+      }
       list.add(WindItem(
         sn,
         deviceSn,

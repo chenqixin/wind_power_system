@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:wind_power_system/page/main_shell_page.dart';
 import 'package:window_manager/window_manager.dart';
 
-void main() async{
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // 初始化 window_manager
@@ -16,8 +17,8 @@ void main() async{
     skipTaskbar: false,
   );
   windowManager.waitUntilReadyToShow(windowOptions, () async {
-    await windowManager.show();      // 显示窗口
-    await windowManager.maximize();  // 启动自动最大化
+    await windowManager.show(); // 显示窗口
+    await windowManager.maximize(); // 启动自动最大化
   });
   runApp(const MyApp());
 }
@@ -30,6 +31,16 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: '风电监控系统',
       theme: _buildIndustrialTheme(),
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('zh', 'CN'),
+        Locale('en', 'US'),
+      ],
+      locale: const Locale('zh', 'CN'),
       builder: (context, child) {
         return MediaQuery(
           // 固定 PC 缩放，避免系统字体影响
@@ -46,7 +57,7 @@ class MyApp extends StatelessWidget {
   // 创建主题theme
   ThemeData _buildIndustrialTheme() {
     const primary = Color(0xFF2F7BEA); // 工业蓝
-    const bg = Color(0xFFEAF0F9);      // 页面背景
+    const bg = Color(0xFFEAF0F9); // 页面背景
     const card = Colors.white;
     const textMain = Color(0xFF1F2937);
     const textSub = Color(0xFF6B7280);
@@ -125,4 +136,3 @@ class MyApp extends StatelessWidget {
     );
   }
 }
-

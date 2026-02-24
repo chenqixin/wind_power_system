@@ -28,7 +28,7 @@ class _ContentNavigatorState extends State<ContentNavigator> {
   Widget build(BuildContext context) {
     return Navigator(
       key: ContentNavigator.navigatorKey,
-      initialRoute: '/home',
+      initialRoute: '/history',
       onGenerateRoute: (settings) {
         switch (settings.name) {
           case '/home':
@@ -42,9 +42,9 @@ class _ContentNavigatorState extends State<ContentNavigator> {
             );
 
           case '/history':
-            final args = settings.arguments as String;
+            //final args = settings.arguments as String;
             return MaterialPageRoute(
-              builder: (_) => DeviceHistoryPage(sn: args),
+              builder: (_) => DeviceHistoryPage(sn: '67'),
             );
           case '/real_time':
             final args = settings.arguments as String;
