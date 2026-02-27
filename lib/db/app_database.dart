@@ -578,4 +578,47 @@ class AppDatabase {
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
   }
+
+  /// 获取历史记录（跨月查询）
+  /// [sn] 设备序列号
+  /// [startTime] 开始时间
+  /// [endTime] 结束时间
+  /// 返回所有跨月表的聚合结果，并按 recordTime 升序排列
+  static Future<List<Map<String, Object?>>> queryHistoryData({
+    required String sn,
+    required DateTime startTime,
+    required DateTime endTime,
+  }) async {
+    final db = await instance();
+    final List<Map<String, Object?>> allResults = [];
+
+    DateTime current = DateTime(startTime.year, startTime.month);
+    final endMonth = DateTime(endTime.year, endTime.month);
+
+    while (current.isBefore(endMonth) || current.isAtSameMomentAs(endMonth)) {
+      final table = monthTableName(current.year, current.month);
+      // 检查表是否存在
+      final tableCheck = await db.rawQuery(
+          "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
+          [table]);
+      if (tableCheck.isNotEmpty) {
+        final rows = await db.query(
+          table,
+          where: 'sn = ? AND recordTime >= ? AND recordTime <= ?',
+          whereArgs: [
+            sn,
+            startTime.millisecondsSinceEpoch,
+            endTime.millisecondsSinceEpoch
+          ],
+          orderBy: 'recordTime ASC',
+        );
+        allResults.addAll(rows);
+      }
+      current = DateTime(current.year, current.month + 1);
+    }
+    // 跨月合并后重新按时间排序
+    allResults.sort(
+        (a, b) => (a['recordTime'] as int).compareTo(b['recordTime'] as int));
+    return allResults;
+  }
 }

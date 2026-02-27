@@ -15,6 +15,18 @@ import 'package:wind_power_system/genernal/extension/text.dart';
 import 'package:wind_power_system/content_navigator.dart';
 import 'package:wind_power_system/utils/mock_data_util.dart';
 import 'package:wind_power_system/core/utils/custom_toast.dart';
+import 'package:syncfusion_flutter_charts/charts.dart';
+import 'package:wind_power_system/db/app_database.dart';
+import 'package:intl/intl.dart';
+
+class ChartData {
+  final DateTime time;
+  final double? value1;
+  final double? value2;
+  final double? value3;
+
+  ChartData(this.time, this.value1, [this.value2, this.value3]);
+}
 
 class DeviceHistoryPage extends StatefulWidget {
   final String sn;
@@ -39,12 +51,120 @@ class _DeviceHistoryPageState extends State<DeviceHistoryPage> {
   late DateTime _startTime;
   late DateTime _endTime;
 
+  List<ChartData> _chartData = [];
+  bool _isLoading = false;
+
+  late ZoomPanBehavior _zoomPanBehavior;
+  late TrackballBehavior _trackballBehavior;
+
+  // 当前可视范围的时长，用于动态调整 X 轴 Level
+  Duration _visibleSpan = const Duration(days: 30);
+
   @override
   void initState() {
     super.initState();
     _endTime = DateTime.now();
-    _startTime = DateTime(_endTime.year, _endTime.month - 1, _endTime.day,
-        _endTime.hour, _endTime.minute);
+    _startTime = _endTime.subtract(const Duration(days: 30));
+    _zoomPanBehavior = ZoomPanBehavior(
+      enablePinching: true,
+      enableMouseWheelZooming: true,
+      zoomMode: ZoomMode.x,
+      enablePanning: true,
+    );
+    _trackballBehavior = TrackballBehavior(
+      enable: true,
+      activationMode: ActivationMode.singleTap,
+      tooltipDisplayMode: TrackballDisplayMode.groupAllPoints,
+      tooltipSettings: const InteractiveTooltip(enable: true),
+    );
+    _loadData();
+  }
+
+  /// 加载历史数据并更新图表状态
+  /// 包含跨月数据聚合、变量选择映射以及缩放行为限制的更新
+  Future<void> _loadData() async {
+    setState(() => _isLoading = true);
+    try {
+      final rows = await AppDatabase.queryHistoryData(
+        sn: '8888', // widget.sn 为固定 8888 测试
+        startTime: _startTime,
+        endTime: _endTime,
+      );
+
+      final List<ChartData> data = rows.map((row) {
+        final time =
+            DateTime.fromMillisecondsSinceEpoch(row['recordTime'] as int);
+        double? v1, v2, v3;
+        final selectedVar = _vars[_selected];
+        if (selectedVar == '电流') {
+          v1 = row['aI'] as double?;
+          v2 = row['bI'] as double?;
+          v3 = row['cI'] as double?;
+        } else if (selectedVar == '冰层厚度') {
+          v1 = row['b1_tick_mid'] as double?;
+          v2 = row['b2_tick_mid'] as double?;
+          v3 = row['b3_tick_mid'] as double?;
+        } else if (selectedVar == '叶片温度') {
+          v1 = row['b1_temp_mid'] as double?;
+          v2 = row['b2_temp_mid'] as double?;
+          v3 = row['b3_temp_mid'] as double?;
+        } else if (selectedVar == '叶片功率') {
+          v1 = row['b1_i'] != null && row['aV'] != null
+              ? (row['b1_i'] as double) * (row['aV'] as double)
+              : null;
+          v2 = row['b2_i'] != null && row['bV'] != null
+              ? (row['b2_i'] as double) * (row['bV'] as double)
+              : null;
+          v3 = row['b3_i'] != null && row['cV'] != null
+              ? (row['b3_i'] as double) * (row['cV'] as double)
+              : null;
+        } else if (selectedVar == '环境温度') {
+          v1 = row['envTemp'] as double?;
+        } else if (selectedVar == '加热功率') {
+          v1 = row['power'] as double?;
+        } else if (selectedVar == '报警状态') {
+          v1 = (row['errorStop'] as num?)?.toDouble();
+        }
+
+        return ChartData(time, v1, v2, v3);
+      }).toList();
+
+      // 更新缩放限制
+      final totalSpan = _endTime.difference(_startTime);
+      final minSpan = _getMinZoomSpan();
+      final newZoomPan = ZoomPanBehavior(
+        enablePinching: true,
+        enableMouseWheelZooming: true,
+        zoomMode: ZoomMode.x,
+        enablePanning: true,
+        maximumZoomLevel: minSpan.inMilliseconds / totalSpan.inMilliseconds,
+      );
+
+      setState(() {
+        _chartData = data;
+        _zoomPanBehavior = newZoomPan;
+        _isLoading = false;
+      });
+    } catch (e) {
+      debugPrint('Error loading data: $e');
+      setState(() => _isLoading = false);
+    }
+  }
+
+  // Y轴配置
+  double get _yMin => 0;
+  double get _yMax {
+    final selectedVar = _vars[_selected];
+    if (selectedVar == '电流') return 40;
+    if (selectedVar == '冰层厚度') return 30;
+    return 100;
+  }
+
+  double get _yInterval {
+    final selectedVar = _vars[_selected];
+    if (selectedVar == '电流') return 5;
+    if (selectedVar == '冰层厚度') return 5;
+    return 20;
   }
 
   final GlobalKey _pickerKey = GlobalKey();
@@ -53,82 +173,44 @@ class _DeviceHistoryPageState extends State<DeviceHistoryPage> {
     return "${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}";
   }
 
+  /// 显示日期选择器
+  /// [isStart] true 表示选择开始时间，false 表示选择结束时间
   void _showDatePicker(bool isStart) async {
-    final RenderBox? renderBox =
-        _pickerKey.currentContext?.findRenderObject() as RenderBox?;
-    final Offset offset = renderBox?.localToGlobal(Offset.zero) ?? Offset.zero;
-    final Size size = renderBox?.size ?? Size.zero;
-    final double screenHeight = MediaQuery.of(context).size.height;
-
-    showDialog(
+    final initialDate = isStart ? _startTime : _endTime;
+    final DateTime? pickedDate = await showDatePicker(
       context: context,
-      builder: (context) {
-        return Stack(
-          children: [
-            Positioned(
-              left: offset.dx,
-              bottom: screenHeight - offset.dy + 10, // 底部在选择器上方，留出10像素间距
-              child: Material(
-                elevation: 8,
-                borderRadius: BorderRadius.circular(8),
-                color: Colors.white,
-                child: Container(
-                  width: 320,
-                  padding: const EdgeInsets.all(8),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(isStart ? '选择开始日期' : '选择结束日期')
-                          .simpleStyle(16, AppColors.blue133),
-                      const Divider(),
-                      Localizations.override(
-                        context: context,
-                        locale: const Locale('zh', 'CN'),
-                        child: CalendarDatePicker(
-                          initialDate: isStart ? _startTime : _endTime,
-                          firstDate: DateTime(2000),
-                          lastDate: DateTime(2101),
-                          onDateChanged: (date) {
-                            DateTime newDateTime;
-                            if (isStart) {
-                              newDateTime = DateTime(date.year, date.month,
-                                  date.day, _startTime.hour, _startTime.minute);
-                              if (newDateTime.isBefore(_endTime)) {
-                                setState(() {
-                                  _startTime = newDateTime;
-                                });
-                                Navigator.pop(context);
-                              } else {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('开始时间必须早于结束时间')),
-                                );
-                              }
-                            } else {
-                              newDateTime = DateTime(date.year, date.month,
-                                  date.day, _endTime.hour, _endTime.minute);
-                              if (newDateTime.isAfter(_startTime)) {
-                                setState(() {
-                                  _endTime = newDateTime;
-                                });
-                                Navigator.pop(context);
-                              } else {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('结束时间必须晚于开始时间')),
-                                );
-                              }
-                            }
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
-        );
-      },
+      initialDate: initialDate,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2101),
+      locale: const Locale('zh', 'CN'),
     );
+
+    if (pickedDate != null) {
+      DateTime newDateTime;
+      if (isStart) {
+        newDateTime = DateTime(pickedDate.year, pickedDate.month,
+            pickedDate.day, _startTime.hour, _startTime.minute);
+        if (newDateTime.isBefore(_endTime)) {
+          setState(() {
+            _startTime = newDateTime;
+          });
+          _loadData();
+        } else {
+          AIToast.msg('开始时间必须早于结束时间');
+        }
+      } else {
+        newDateTime = DateTime(pickedDate.year, pickedDate.month,
+            pickedDate.day, _endTime.hour, _endTime.minute);
+        if (newDateTime.isAfter(_startTime)) {
+          setState(() {
+            _endTime = newDateTime;
+          });
+          _loadData();
+        } else {
+          AIToast.msg('结束时间必须晚于开始时间');
+        }
+      }
+    }
   }
 
   @override
@@ -284,9 +366,19 @@ class _DeviceHistoryPageState extends State<DeviceHistoryPage> {
                                     ),
 
                                     //根据时间 从数据库中获取曲线图
-
-
-
+                                    Expanded(
+                                      child: Padding(
+                                        padding: const EdgeInsets.only(top: 10),
+                                        child: _isLoading
+                                            ? const Center(
+                                                child:
+                                                    CircularProgressIndicator())
+                                            : _chartData.isEmpty
+                                                ? const Center(
+                                                    child: Text('暂无历史数据'))
+                                                : _buildChart(),
+                                      ),
+                                    ),
                                   ],
                                 )),
                             // 时间选择
@@ -340,6 +432,7 @@ class _DeviceHistoryPageState extends State<DeviceHistoryPage> {
                                             .generateMockHistoryData();
                                         if (context.mounted) {
                                           AIToast.msg('生成成功');
+                                          _loadData();
                                         }
                                       } catch (e) {
                                         if (context.mounted) {
@@ -397,6 +490,7 @@ class _DeviceHistoryPageState extends State<DeviceHistoryPage> {
                               setState(() {
                                 _selected = i;
                               });
+                              _loadData();
                             },
                             child: Container(
                               height: 36,
@@ -437,6 +531,241 @@ class _DeviceHistoryPageState extends State<DeviceHistoryPage> {
         ]),
       ),
     );
+  }
+
+  /// 构建同步化的笛卡尔图表
+  /// 包含 X 轴分级逻辑监听 (_visibleSpan) 以及轨道球、缩放行为绑定
+  Widget _buildChart() {
+    return SfCartesianChart(
+      zoomPanBehavior: _zoomPanBehavior,
+      trackballBehavior: _trackballBehavior,
+      primaryXAxis: DateTimeAxis(
+        name: 'primaryXAxis',
+        dateFormat: _getDateFormat(),
+        intervalType: _getIntervalType(),
+        majorGridLines: const MajorGridLines(width: 0.5, color: Colors.grey),
+        minorGridLines: _getMinorGridLines(),
+        minorTicksPerInterval: _getMinorTicksPerInterval(),
+        labelIntersectAction: AxisLabelIntersectAction.rotate45,
+        interactiveTooltip: const InteractiveTooltip(
+          enable: true,
+          format: 'MM-dd HH:mm',
+        ),
+      ),
+      primaryYAxis: NumericAxis(
+        minimum: _yMin,
+        maximum: _yMax,
+        interval: _yInterval,
+        majorGridLines: const MajorGridLines(width: 0.5, color: Colors.grey),
+      ),
+      series: _getSeries(),
+      onTrackballPositionChanging: (TrackballArgs args) {
+        final selectedVar = _vars[_selected];
+        String unit = '';
+        if (selectedVar == '冰层厚度') {
+          unit = ' mm';
+        } else if (selectedVar == '叶片温度') {
+          unit = ' 度';
+        } else if (selectedVar == '叶片功率') {
+          unit = ' W';
+        }
+
+        // 使用 chartPointInfoList 获取所有点的信息 (Syncfusion v21+ 的标准写法)
+        // 如果版本较低，可能需要尝试不同的属性
+        try {
+          final List<dynamic> infoList = (args as dynamic).chartPointInfoList;
+          for (var info in infoList) {
+            final seriesName = info.series?.name ?? '';
+            final yValue = info.yValue;
+            String yValueStr;
+            if (selectedVar == '报警状态') {
+              yValueStr = yValue?.toInt().toString() ?? '--';
+            } else {
+              yValueStr = yValue?.toStringAsFixed(2) ?? '--';
+            }
+            info.label = '$seriesName: $yValueStr$unit';
+          }
+        } catch (e) {
+          // 备选方案：尝试单一 chartPointInfo
+          try {
+            final info = (args as dynamic).chartPointInfo;
+            if (info != null) {
+              final seriesName = info.series?.name ?? '';
+              final yValue = info.yValue;
+              String yValueStr;
+              if (selectedVar == '报警状态') {
+                yValueStr = yValue?.toInt().toString() ?? '--';
+              } else {
+                yValueStr = yValue?.toStringAsFixed(2) ?? '--';
+              }
+              info.label = '$seriesName: $yValueStr$unit';
+            }
+          } catch (_) {}
+        }
+      },
+      onActualRangeChanged: (ActualRangeChangedArgs args) {
+        if (args.orientation == AxisOrientation.horizontal) {
+          final visibleMin = args.visibleMin as num;
+          final visibleMax = args.visibleMax as num;
+          final span = DateTime.fromMillisecondsSinceEpoch(visibleMax.toInt())
+              .difference(
+                  DateTime.fromMillisecondsSinceEpoch(visibleMin.toInt()));
+
+          if (span != _visibleSpan) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) {
+                setState(() {
+                  _visibleSpan = span;
+                });
+              }
+            });
+          }
+        }
+      },
+    );
+  }
+
+  /// 获取当前可见范围下的次级网格线样式
+  MinorGridLines _getMinorGridLines() {
+    if (_visibleSpan.inHours <= 1) return const MinorGridLines(width: 0.2);
+    return const MinorGridLines(width: 0);
+  }
+
+  /// 获取当前可见范围下的次级刻度数量
+  int _getMinorTicksPerInterval() {
+    if (_visibleSpan.inHours <= 1) return 4;
+    return 0;
+  }
+
+  /// 获取当前可见范围下的时间格式化字符串
+  DateFormat _getDateFormat() {
+    if (_visibleSpan.inDays > 7) return DateFormat('MM-dd');
+    if (_visibleSpan.inDays >= 1) return DateFormat('MM-dd HH:mm');
+    return DateFormat('HH:mm');
+  }
+
+  /// 获取当前可见范围下的 X 轴间隔类型
+  DateTimeIntervalType _getIntervalType() {
+    if (_visibleSpan.inDays > 7) return DateTimeIntervalType.days;
+    if (_visibleSpan.inDays >= 1) return DateTimeIntervalType.hours;
+    return DateTimeIntervalType.minutes;
+  }
+
+  /// 获取缩放时允许的最小跨度（防止无限缩放）
+  Duration _getMinZoomSpan() {
+    return const Duration(minutes: 5);
+  }
+
+  /// 构建图表系列（根据 selectedVar 动态切换）
+  List<LineSeries<ChartData, DateTime>> _getSeries() {
+    final selectedVar = _vars[_selected];
+    if (selectedVar == '电流') {
+      return [
+        LineSeries<ChartData, DateTime>(
+          dataSource: _chartData,
+          xValueMapper: (ChartData data, _) => data.time,
+          yValueMapper: (ChartData data, _) => data.value1,
+          name: 'A相电流',
+          color: const Color(0xFF1AD2B9),
+        ),
+        LineSeries<ChartData, DateTime>(
+          dataSource: _chartData,
+          xValueMapper: (ChartData data, _) => data.time,
+          yValueMapper: (ChartData data, _) => data.value2,
+          name: 'B相电流',
+          color: Colors.blue,
+        ),
+        LineSeries<ChartData, DateTime>(
+          dataSource: _chartData,
+          xValueMapper: (ChartData data, _) => data.time,
+          yValueMapper: (ChartData data, _) => data.value3,
+          name: 'C相电流',
+          color: const Color(0xFFFF6A4C),
+        ),
+      ];
+    } else if (selectedVar == '冰层厚度') {
+      return [
+        LineSeries<ChartData, DateTime>(
+          dataSource: _chartData,
+          xValueMapper: (ChartData data, _) => data.time,
+          yValueMapper: (ChartData data, _) => data.value1,
+          name: '1叶片冰厚',
+          color: const Color(0xFF1AD2B9),
+        ),
+        LineSeries<ChartData, DateTime>(
+          dataSource: _chartData,
+          xValueMapper: (ChartData data, _) => data.time,
+          yValueMapper: (ChartData data, _) => data.value2,
+          name: '2叶片冰厚',
+          color: Colors.blue,
+        ),
+        LineSeries<ChartData, DateTime>(
+          dataSource: _chartData,
+          xValueMapper: (ChartData data, _) => data.time,
+          yValueMapper: (ChartData data, _) => data.value3,
+          name: '3叶片冰厚',
+          color: const Color(0xFFFF6A4C),
+        ),
+      ];
+    } else if (selectedVar == '叶片温度') {
+      return [
+        LineSeries<ChartData, DateTime>(
+          dataSource: _chartData,
+          xValueMapper: (ChartData data, _) => data.time,
+          yValueMapper: (ChartData data, _) => data.value1,
+          name: '1叶片温度',
+          color: const Color(0xFF1AD2B9),
+        ),
+        LineSeries<ChartData, DateTime>(
+          dataSource: _chartData,
+          xValueMapper: (ChartData data, _) => data.time,
+          yValueMapper: (ChartData data, _) => data.value2,
+          name: '2叶片温度',
+          color: Colors.blue,
+        ),
+        LineSeries<ChartData, DateTime>(
+          dataSource: _chartData,
+          xValueMapper: (ChartData data, _) => data.time,
+          yValueMapper: (ChartData data, _) => data.value3,
+          name: '3叶片温度',
+          color: const Color(0xFFFF6A4C),
+        ),
+      ];
+    } else if (selectedVar == '叶片功率') {
+      return [
+        LineSeries<ChartData, DateTime>(
+          dataSource: _chartData,
+          xValueMapper: (ChartData data, _) => data.time,
+          yValueMapper: (ChartData data, _) => data.value1,
+          name: '1叶片功率',
+          color: const Color(0xFF1AD2B9),
+        ),
+        LineSeries<ChartData, DateTime>(
+          dataSource: _chartData,
+          xValueMapper: (ChartData data, _) => data.time,
+          yValueMapper: (ChartData data, _) => data.value2,
+          name: '2叶片功率',
+          color: Colors.blue,
+        ),
+        LineSeries<ChartData, DateTime>(
+          dataSource: _chartData,
+          xValueMapper: (ChartData data, _) => data.time,
+          yValueMapper: (ChartData data, _) => data.value3,
+          name: '3叶片功率',
+          color: const Color(0xFFFF6A4C),
+        ),
+      ];
+    } else {
+      return [
+        LineSeries<ChartData, DateTime>(
+          dataSource: _chartData,
+          xValueMapper: (ChartData data, _) => data.time,
+          yValueMapper: (ChartData data, _) => data.value1,
+          name: selectedVar,
+          color: const Color(0xFF1AD2B9),
+        ),
+      ];
+    }
   }
 
   //  1:'ic_yg.png',2:ic_yz.png, 3 ic_yj.png
