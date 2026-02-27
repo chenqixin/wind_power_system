@@ -13,6 +13,8 @@ import 'package:wind_power_system/core/constant/app_constant.dart';
 import 'package:wind_power_system/genernal/extension/string.dart';
 import 'package:wind_power_system/genernal/extension/text.dart';
 import 'package:wind_power_system/content_navigator.dart';
+import 'package:wind_power_system/utils/mock_data_util.dart';
+import 'package:wind_power_system/core/utils/custom_toast.dart';
 
 class DeviceHistoryPage extends StatefulWidget {
   final String sn;
@@ -230,7 +232,63 @@ class _DeviceHistoryPageState extends State<DeviceHistoryPage> {
                         padding: EdgeInsets.zero,
                         child: SizedBox.expand(
                           child: Column(children: [
-                            Expanded(flex: 1, child: Container()),
+                            //历史记录
+                            Expanded(
+                                flex: 1,
+                                child: Column(
+                                  children: [
+                                    SizedBox(
+                                      height: 10,
+                                    ),
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.end,
+                                      children: [
+                                        if (_vars[_selected] == '电流') ...[
+                                          _xItem('ic_yg.png', 'A相电流'),
+                                          //红
+                                          _xItem('ic_yz.png', 'B相电流'),
+                                          //青
+                                          _xItem('ic_yj.png', 'C相电流'),
+                                        ] else if (_vars[_selected] ==
+                                            '冰层厚度') ...[
+                                          _xItem('ic_yg.png', '1叶片冰层厚度'),
+                                          //红
+                                          _xItem('ic_yz.png', '2叶片冰层厚度'),
+                                          //青
+                                          _xItem('ic_yj.png', '3叶片冰层厚度'),
+                                        ] else if (_vars[_selected] ==
+                                            '叶片温度') ...[
+                                          _xItem('ic_yg.png', '1叶片温度'),
+                                          //红
+                                          _xItem('ic_yz.png', '2叶片温度'),
+                                          //青
+                                          _xItem('ic_yj.png', '3叶片温度'),
+                                        ] else if (_vars[_selected] ==
+                                            '叶片功率') ...[
+                                          _xItem('ic_yg.png', '1叶片功率'),
+                                          //红
+                                          _xItem('ic_yz.png', '2叶片功率'),
+                                          //青
+                                          _xItem('ic_yj.png', '3叶片功率'),
+                                        ] else if (_vars[_selected] ==
+                                            '报警状态') ...[
+                                          _xItem('ic_yg.png', '报警状态'),
+                                        ] else if (_vars[_selected] ==
+                                            '加热功率') ...[
+                                          _xItem('ic_yg.png', '加热功率'),
+                                        ] else if (_vars[_selected] ==
+                                            '环境温度') ...[
+                                          _xItem('ic_yg.png', '环境温度'),
+                                        ]
+                                      ],
+                                    ),
+
+                                    //根据时间 从数据库中获取曲线图
+
+
+
+                                  ],
+                                )),
                             // 时间选择
                             Container(
                               key: _pickerKey,
@@ -269,6 +327,41 @@ class _DeviceHistoryPageState extends State<DeviceHistoryPage> {
                                             AppColors.blue133.withOpacity(0.6)),
                                   ),
                                   const Spacer(),
+                                  ElevatedButton(
+                                    onPressed: () async {
+                                      showDialog(
+                                        context: context,
+                                        barrierDismissible: false,
+                                        builder: (context) => const Center(
+                                            child: CircularProgressIndicator()),
+                                      );
+                                      try {
+                                        await MockDataUtil
+                                            .generateMockHistoryData();
+                                        if (context.mounted) {
+                                          AIToast.msg('生成成功');
+                                        }
+                                      } catch (e) {
+                                        if (context.mounted) {
+                                          AIToast.msg('生成失败');
+                                        }
+                                      }
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.orange,
+                                      foregroundColor: Colors.white,
+                                      elevation: 0,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      minimumSize: const Size(88, 42),
+                                    ),
+                                    child: const Text('模拟数据',
+                                        style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w500)),
+                                  ),
+                                  const SizedBox(width: 8),
                                   ElevatedButton(
                                     onPressed: () {
                                       // TODO: 分析逻辑
@@ -342,6 +435,20 @@ class _DeviceHistoryPageState extends State<DeviceHistoryPage> {
             ),
           ])
         ]),
+      ),
+    );
+  }
+
+  //  1:'ic_yg.png',2:ic_yz.png, 3 ic_yj.png
+  Widget _xItem(String path, String title) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 0),
+      child: Row(
+        children: [
+          Image.asset(path.imagePath, width: 15, height: 5),
+          const SizedBox(width: 2),
+          Text(title).simpleStyle(10, HexColor('#133F72')),
+        ],
       ),
     );
   }
