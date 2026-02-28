@@ -230,6 +230,27 @@ class AppDatabase {
             'ALTER TABLE ' + table + ' ADD COLUMN ' + b + '_v REAL NULL');
       }
     }
+    // Fault columns migration
+    final faultCols = [
+      'faultRing',
+      'faultUps',
+      'faultTestCom',
+      'faultIavg',
+      'faultContactor',
+      'faultStick',
+      'faultStickBlade1',
+      'faultStickBlade2',
+      'faultStickBlade3',
+      'faultBlade1',
+      'faultBlade2',
+      'faultBlade3'
+    ];
+    for (final fault in faultCols) {
+      if (!cols.contains(fault)) {
+        await db.execute(
+            'ALTER TABLE ' + table + ' ADD COLUMN ' + fault + ' INTEGER NULL');
+      }
+    }
     // indexes
     await db.execute('CREATE INDEX IF NOT EXISTS idx_' +
         table +

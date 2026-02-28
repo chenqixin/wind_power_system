@@ -58,13 +58,14 @@ class _DeviceHistoryPageState extends State<DeviceHistoryPage> {
   late TrackballBehavior _trackballBehavior;
 
   // 当前可视范围的时长，用于动态调整 X 轴 Level
-  Duration _visibleSpan = const Duration(days: 30);
+  Duration _visibleSpan = const Duration(days: 3);
 
   @override
   void initState() {
     super.initState();
     _endTime = DateTime.now();
-    _startTime = _endTime.subtract(const Duration(days: 30));
+    final now = DateTime.now();
+    _startTime = DateTime(now.year, now.month, now.day - 2, 0, 0, 0);
     _zoomPanBehavior = ZoomPanBehavior(
       enablePinching: true,
       enableMouseWheelZooming: true,
@@ -101,29 +102,76 @@ class _DeviceHistoryPageState extends State<DeviceHistoryPage> {
           v2 = row['bI'] as double?;
           v3 = row['cI'] as double?;
         } else if (selectedVar == '冰层厚度') {
-          v1 = row['b1_tick_mid'] as double?;
-          v2 = row['b2_tick_mid'] as double?;
-          v3 = row['b3_tick_mid'] as double?;
+          v1 =
+              _avg3(row['b1_tick_up'], row['b1_tick_mid'], row['b1_tick_down']);
+          v2 =
+              _avg3(row['b2_tick_up'], row['b2_tick_mid'], row['b2_tick_down']);
+          v3 =
+              _avg3(row['b3_tick_up'], row['b3_tick_mid'], row['b3_tick_down']);
         } else if (selectedVar == '叶片温度') {
-          v1 = row['b1_temp_mid'] as double?;
-          v2 = row['b2_temp_mid'] as double?;
-          v3 = row['b3_temp_mid'] as double?;
+          v1 =
+              _avg3(row['b1_temp_up'], row['b1_temp_mid'], row['b1_temp_down']);
+          v2 =
+              _avg3(row['b2_temp_up'], row['b2_temp_mid'], row['b2_temp_down']);
+          v3 =
+              _avg3(row['b3_temp_up'], row['b3_temp_mid'], row['b3_temp_down']);
         } else if (selectedVar == '叶片功率') {
-          v1 = row['b1_i'] != null && row['aV'] != null
-              ? (row['b1_i'] as double) * (row['aV'] as double)
+          v1 = row['b1_i'] != null && row['b1_v'] != null
+              ? (row['b1_i'] as num).toDouble() *
+                  (row['b1_v'] as num).toDouble()
               : null;
-          v2 = row['b2_i'] != null && row['bV'] != null
-              ? (row['b2_i'] as double) * (row['bV'] as double)
+          v2 = row['b2_i'] != null && row['b2_v'] != null
+              ? (row['b2_i'] as num).toDouble() *
+                  (row['b2_v'] as num).toDouble()
               : null;
-          v3 = row['b3_i'] != null && row['cV'] != null
-              ? (row['b3_i'] as double) * (row['cV'] as double)
+          v3 = row['b3_i'] != null && row['b3_v'] != null
+              ? (row['b3_i'] as num).toDouble() *
+                  (row['b3_v'] as num).toDouble()
               : null;
         } else if (selectedVar == '环境温度') {
           v1 = row['envTemp'] as double?;
         } else if (selectedVar == '加热功率') {
-          v1 = row['power'] as double?;
+          final p1 = (row['b1_i'] != null && row['b1_v'] != null)
+              ? (row['b1_i'] as num).toDouble() *
+                  (row['b1_v'] as num).toDouble()
+              : null;
+          final p2 = (row['b2_i'] != null && row['b2_v'] != null)
+              ? (row['b2_i'] as num).toDouble() *
+                  (row['b2_v'] as num).toDouble()
+              : null;
+          final p3 = (row['b3_i'] != null && row['b3_v'] != null)
+              ? (row['b3_i'] as num).toDouble() *
+                  (row['b3_v'] as num).toDouble()
+              : null;
+          if (p1 == null && p2 == null && p3 == null) {
+            v1 = null;
+          } else {
+            v1 = (p1 ?? 0) + (p2 ?? 0) + (p3 ?? 0);
+          }
         } else if (selectedVar == '报警状态') {
-          v1 = (row['errorStop'] as num?)?.toDouble();
+          final faultFields = [
+            'errorStop',
+            'faultRing',
+            'faultUps',
+            'faultTestCom',
+            'faultIavg',
+            'faultContactor',
+            'faultStick',
+            'faultStickBlade1',
+            'faultStickBlade2',
+            'faultStickBlade3',
+            'faultBlade1',
+            'faultBlade2',
+            'faultBlade3'
+          ];
+          bool hasFault = false;
+          for (final field in faultFields) {
+            if ((row[field] as num? ?? 0) != 0) {
+              hasFault = true;
+              break;
+            }
+          }
+          v1 = hasFault ? 1.0 : 0.0;
         }
 
         return ChartData(time, v1, v2, v3);
@@ -149,6 +197,12 @@ class _DeviceHistoryPageState extends State<DeviceHistoryPage> {
       debugPrint('Error loading data: $e');
       setState(() => _isLoading = false);
     }
+  }
+
+  double? _avg3(dynamic a, dynamic b, dynamic c) {
+    final values = [a, b, c].whereType<num>().toList();
+    if (values.isEmpty) return null;
+    return values.fold<double>(0.0, (p, e) => p + e.toDouble()) / values.length;
   }
 
   // Y轴配置
@@ -188,8 +242,9 @@ class _DeviceHistoryPageState extends State<DeviceHistoryPage> {
     if (pickedDate != null) {
       DateTime newDateTime;
       if (isStart) {
-        newDateTime = DateTime(pickedDate.year, pickedDate.month,
-            pickedDate.day, _startTime.hour, _startTime.minute);
+        // 开始时间默认设为该日的 00:00
+        newDateTime = DateTime(
+            pickedDate.year, pickedDate.month, pickedDate.day, 0, 0, 0);
         if (newDateTime.isBefore(_endTime)) {
           setState(() {
             _startTime = newDateTime;
@@ -199,6 +254,7 @@ class _DeviceHistoryPageState extends State<DeviceHistoryPage> {
           AIToast.msg('开始时间必须早于结束时间');
         }
       } else {
+        // 结束时间保留当前选择的小时和分钟，或者如果需要也可以设为 23:59:59
         newDateTime = DateTime(pickedDate.year, pickedDate.month,
             pickedDate.day, _endTime.hour, _endTime.minute);
         if (newDateTime.isAfter(_startTime)) {

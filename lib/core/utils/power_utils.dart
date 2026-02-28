@@ -4,15 +4,21 @@ import 'package:wind_power_system/model/DeviceDetailData.dart' as model;
 
 
 //总功率
-({String value, String unit}) powerValueUnit(model.State? s) {
-  if (s == null) return (value: '-', unit: '');
-  final ai = (s.aI ?? 0).toDouble();
-  final bi = (s.bI ?? 0).toDouble();
-  final ci = (s.cI ?? 0).toDouble();
-  final av = (s.aV ?? 0).toDouble();
-  final bv = (s.bV ?? 0).toDouble();
-  final cv = (s.cV ?? 0).toDouble();
-  final p = ai * av + bi * bv + ci * cv;
+({String value, String unit}) powerValueUnit(model.DeviceDetailData? data) {
+  if (data == null || data.winddata == null) return (value: '-', unit: '');
+  final wind = data.winddata!;
+  
+  final p1 = (wind.blade1?.windI != null && wind.blade1?.windV != null)
+      ? (wind.blade1!.windI!.toDouble() * wind.blade1!.windV!.toDouble())
+      : 0.0;
+  final p2 = (wind.blade2?.windI != null && wind.blade2?.windV != null)
+      ? (wind.blade2!.windI!.toDouble() * wind.blade2!.windV!.toDouble())
+      : 0.0;
+  final p3 = (wind.blade3?.windI != null && wind.blade3?.windV != null)
+      ? (wind.blade3!.windI!.toDouble() * wind.blade3!.windV!.toDouble())
+      : 0.0;
+
+  final p = p1 + p2 + p3;
   if (p >= 1000) {
     return (value: (p / 1000).toStringAsFixed(2), unit: 'kw');
   } else {

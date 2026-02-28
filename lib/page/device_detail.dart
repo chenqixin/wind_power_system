@@ -1199,8 +1199,8 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
                             },
                             {
                               'title': '瞬时功率',
-                              'value': powerValueUnit(detail?.state).value,
-                              'unit': powerValueUnit(detail?.state).unit
+                              'value': powerValueUnit(detail).value,
+                              'unit': powerValueUnit(detail).unit
                             },
                             {
                               'title': '转速',

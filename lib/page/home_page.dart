@@ -98,7 +98,7 @@ class _HomePageState extends State<HomePage> {
   ({String value, String unit}) _totalPowerValueUnit() {
     double sumW = 0.0;
     for (final it in items) {
-      final res = powerValueUnit(it.details?.state);
+      final res = powerValueUnit(it.details);
       final v = double.tryParse(res.value);
       if (v == null) continue;
       if (res.unit.toLowerCase() == 'kw') {
@@ -290,7 +290,7 @@ class _HomePageState extends State<HomePage> {
                 ).simpleStyle(22, AppColors.blue135, isBold: true),
                 _buildHovelItem(1, '设备型号：', it.deviceSn),
                 _buildHovelItem(0, '加热功率：',
-                    '${powerValueUnit(it.details?.state).value} ${powerValueUnit(it.details?.state).unit}'),
+                    '${powerValueUnit(it.details).value} ${powerValueUnit(it.details).unit}'),
                 _buildHovelItem(1, '状态分类：：', '-'),
                 _buildHovelItem(0, '叶片1平均温度：', blade1T),
                 _buildHovelItem(1, '叶片2平均温度：', blade2T),
@@ -620,8 +620,8 @@ class _HomePageState extends State<HomePage> {
                                                   child: Row(
                                                     children: [
                                                       Text(
-                                                        powerValueUnit(it
-                                                                .details?.state)
+                                                        powerValueUnit(
+                                                                it.details)
                                                             .value,
                                                         style: textCon,
                                                       ),
@@ -629,8 +629,8 @@ class _HomePageState extends State<HomePage> {
                                                         width: 2,
                                                       ),
                                                       Text(
-                                                        powerValueUnit(it
-                                                                .details?.state)
+                                                        powerValueUnit(
+                                                                it.details)
                                                             .unit,
                                                         style: TextStyle(
                                                           fontSize: 12,

@@ -121,6 +121,19 @@ class MockDataUtil {
             'b3_run_down': 1,
             'b3_i': _random.nextInt(41).toDouble(),
             'b3_v': 200.0 + _random.nextDouble() * 20.0,
+            // Fault data
+            'faultRing': _random.nextDouble() > 0.95 ? 1 : 0,
+            'faultUps': _random.nextDouble() > 0.95 ? 1 : 0,
+            'faultTestCom': _random.nextDouble() > 0.95 ? 1 : 0,
+            'faultIavg': _random.nextDouble() > 0.95 ? 1 : 0,
+            'faultContactor': _random.nextDouble() > 0.95 ? 1 : 0,
+            'faultStick': _random.nextDouble() > 0.95 ? 1 : 0,
+            'faultStickBlade1': _random.nextDouble() > 0.95 ? 1 : 0,
+            'faultStickBlade2': _random.nextDouble() > 0.95 ? 1 : 0,
+            'faultStickBlade3': _random.nextDouble() > 0.95 ? 1 : 0,
+            'faultBlade1': _random.nextDouble() > 0.95 ? 1 : 0,
+            'faultBlade2': _random.nextDouble() > 0.95 ? 1 : 0,
+            'faultBlade3': _random.nextDouble() > 0.95 ? 1 : 0,
           },
           conflictAlgorithm: ConflictAlgorithm.replace,
         );
@@ -132,5 +145,3 @@ class MockDataUtil {
     }
   }
 }
-
-
