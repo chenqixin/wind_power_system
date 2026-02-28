@@ -625,7 +625,8 @@ class _DeviceHistoryPageState extends State<DeviceHistoryPage> {
         minimum: _yMin,
         maximum: _yMax,
         interval: _yInterval,
-        majorGridLines: const MajorGridLines(width: 0.5, color: Colors.grey),
+        majorGridLines: const MajorGridLines(
+            width: 0.5, color: Colors.grey, dashArray: [5, 5]),
       ),
       series: _getSeries(),
       onTrackballPositionChanging: (TrackballArgs args) {
