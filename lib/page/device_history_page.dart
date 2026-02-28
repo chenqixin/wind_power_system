@@ -18,6 +18,7 @@ import 'package:wind_power_system/core/utils/custom_toast.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
 import 'package:wind_power_system/db/app_database.dart';
 import 'package:intl/intl.dart';
+import 'export_dialog.dart';
 
 class ChartData {
   final DateTime time;
@@ -87,7 +88,7 @@ class _DeviceHistoryPageState extends State<DeviceHistoryPage> {
     setState(() => _isLoading = true);
     try {
       final rows = await AppDatabase.queryHistoryData(
-        sn: '8888', // widget.sn 为固定 8888 测试
+        sn: "8888",
         startTime: _startTime,
         endTime: _endTime,
       );
@@ -538,6 +539,30 @@ class _DeviceHistoryPageState extends State<DeviceHistoryPage> {
                                       minimumSize: const Size(88, 42),
                                     ),
                                     child: const Text('分析',
+                                        style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w500)),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  ElevatedButton(
+                                    onPressed: () {
+                                      showDialog(
+                                        context: context,
+                                        barrierDismissible: true,
+                                        builder: (_) =>
+                                            ExportDialog(sn: "8888"),//widget.sn
+                                      );
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: AppColors.blue06,
+                                      foregroundColor: Colors.white,
+                                      elevation: 0,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      minimumSize: const Size(88, 42),
+                                    ),
+                                    child: const Text('导出',
                                         style: TextStyle(
                                             fontSize: 16,
                                             fontWeight: FontWeight.w500)),
