@@ -113,40 +113,52 @@ class _ExportDialogState extends State<ExportDialog> {
       _addDataRows(sheet, aggregatedData);
 
       // 保存文件
-      Directory? directory;
-      try {
-        if (Platform.isWindows) {
-          directory = Directory(
-              'C:/Users/${Platform.environment['USERNAME']}/Documents');
-        } else if (Platform.isMacOS) {
-          directory =
-              Directory('/Users/${Platform.environment['USER']}/Documents');
-        }
-      } catch (e) {
-        debugPrint('获取系统文档目录失败: $e');
-      }
-
-      if (directory == null || !await directory.exists()) {
-        directory = await getApplicationDocumentsDirectory();
-      }
-
       String fileName = _reportNameController.text;
       if (fileName.isEmpty) fileName = '历史数据';
       if (!fileName.toLowerCase().endsWith('.xlsx')) {
         fileName += '.xlsx';
       }
-      final filePath = '${directory.path}/$fileName';
-      debugPrint('准备保存文件到: $filePath');
 
-      final file = File(filePath);
-      final bytes = excel.save();
-      if (bytes == null) {
-        throw Exception('Excel 保存失败，返回字节为空');
+      File? file;
+      String? finalPath;
+
+      // 尝试保存到用户指定的文档目录 (可能会因为沙盒权限失败)
+      try {
+        Directory? preferredDir;
+        if (Platform.isWindows) {
+          preferredDir = Directory(
+              'C:/Users/${Platform.environment['USERNAME']}/Documents');
+        } else if (Platform.isMacOS) {
+          preferredDir =
+              Directory('/Users/${Platform.environment['USER']}/Documents');
+        }
+
+        if (preferredDir != null && await preferredDir.exists()) {
+          finalPath = '${preferredDir.path}/$fileName';
+          file = File(finalPath);
+          final bytes = excel.save();
+          if (bytes != null) {
+            await file.writeAsBytes(bytes);
+            debugPrint('成功保存到首选目录: $finalPath');
+          }
+        }
+      } catch (e) {
+        debugPrint('保存到首选目录失败 (通常是权限问题): $e');
+        file = null;
       }
-      await file.writeAsBytes(bytes);
 
-      debugPrint('文件保存成功: $filePath');
-      _showMsg('导出成功，文件保存至：$filePath');
+      // 如果首选目录失败，保存到应用私有目录 (保证成功)
+      if (file == null) {
+        final appDir = await getApplicationDocumentsDirectory();
+        finalPath = '${appDir.path}/$fileName';
+        file = File(finalPath);
+        final bytes = excel.save();
+        if (bytes == null) throw Exception('Excel 数据生成失败');
+        await file.writeAsBytes(bytes);
+        debugPrint('成功保存到应用私有目录: $finalPath');
+      }
+
+      _showMsg('导出成功！\n路径：$finalPath');
       if (mounted) Navigator.pop(context);
     } catch (e, stackTrace) {
       debugPrint('导出失败: $e');
@@ -339,18 +351,41 @@ class _ExportDialogState extends State<ExportDialog> {
   void _addDataRows(ex.Sheet sheet, List<Map<String, dynamic>> data) {
     int rowIndex = 2;
 
-    final redStyle = ex.CellStyle(
-      fontColorHex: ex.ExcelColor.red,
-      horizontalAlign: ex.HorizontalAlign.Center,
-      verticalAlign: ex.VerticalAlign.Center,
-    );
-    final normalStyle = ex.CellStyle(
-      horizontalAlign: ex.HorizontalAlign.Center,
-      verticalAlign: ex.VerticalAlign.Center,
-    );
+    // 隔行填充的背景色 (使用十六进制字符串)
+    final String alternateColor = "E8F5E9"; // 极浅的绿色 (Material Light Green 50)
 
     for (var rowData in data) {
       int colIndex = 0;
+      bool isAlternate = (rowIndex % 2 == 1); // 隔行判断
+
+      // 基础样式
+      late ex.CellStyle baseStyle;
+      late ex.CellStyle redStyle;
+
+      if (isAlternate) {
+        baseStyle = ex.CellStyle(
+          horizontalAlign: ex.HorizontalAlign.Center,
+          verticalAlign: ex.VerticalAlign.Center,
+          backgroundColorHex: ex.ExcelColor.fromHexString(alternateColor),
+        );
+        redStyle = ex.CellStyle(
+          fontColorHex: ex.ExcelColor.red,
+          horizontalAlign: ex.HorizontalAlign.Center,
+          verticalAlign: ex.VerticalAlign.Center,
+          backgroundColorHex: ex.ExcelColor.fromHexString(alternateColor),
+        );
+      } else {
+        baseStyle = ex.CellStyle(
+          horizontalAlign: ex.HorizontalAlign.Center,
+          verticalAlign: ex.VerticalAlign.Center,
+        );
+        redStyle = ex.CellStyle(
+          fontColorHex: ex.ExcelColor.red,
+          horizontalAlign: ex.HorizontalAlign.Center,
+          verticalAlign: ex.VerticalAlign.Center,
+        );
+      }
+
       DateTime dt =
           DateTime.fromMillisecondsSinceEpoch(rowData['recordTime'] as int);
       String timeStr;
@@ -370,7 +405,7 @@ class _ExportDialogState extends State<ExportDialog> {
         } else {
           cell.value = ex.TextCellValue(value?.toString() ?? '-');
         }
-        cell.cellStyle = style ?? normalStyle;
+        cell.cellStyle = style ?? baseStyle;
         colIndex++;
       }
 
@@ -391,73 +426,62 @@ class _ExportDialogState extends State<ExportDialog> {
           addCell(rowData['cI'] != null
               ? double.parse(rowData['cI'].toStringAsFixed(2))
               : '-');
-        else if (v == '叶片1冰层厚度+温度+功率') {
-          double? tick = _avg3(rowData['b1_tick_up'], rowData['b1_tick_mid'],
-              rowData['b1_tick_down']);
-          addCell(tick != null ? double.parse(tick.toStringAsFixed(2)) : '-');
-
-          double? temp = _avg3(rowData['b1_temp_up'], rowData['b1_temp_mid'],
-              rowData['b1_temp_down']);
-          addCell(temp != null ? double.parse(temp.toStringAsFixed(2)) : '-');
-
-          double? p = _power(rowData['b1_i'], rowData['b1_v']);
-          addCell(p != null ? double.parse(p.toStringAsFixed(2)) : '-');
-        } else if (v == '叶片2冰层通度+温度+功率') {
-          double? tick = _avg3(rowData['b2_tick_up'], rowData['b2_tick_mid'],
-              rowData['b2_tick_down']);
-          addCell(tick != null ? double.parse(tick.toStringAsFixed(2)) : '-');
-
-          double? temp = _avg3(rowData['b2_temp_up'], rowData['b2_temp_mid'],
-              rowData['b2_temp_down']);
-          addCell(temp != null ? double.parse(temp.toStringAsFixed(2)) : '-');
-
-          double? p = _power(rowData['b2_i'], rowData['b2_v']);
-          addCell(p != null ? double.parse(p.toStringAsFixed(2)) : '-');
-        } else if (v == '叶片3冰层厚度+温度+功率') {
-          double? tick = _avg3(rowData['b3_tick_up'], rowData['b3_tick_mid'],
-              rowData['b3_tick_down']);
-          addCell(tick != null ? double.parse(tick.toStringAsFixed(2)) : '-');
-
-          double? temp = _avg3(rowData['b3_temp_up'], rowData['b3_temp_mid'],
-              rowData['b3_temp_down']);
-          addCell(temp != null ? double.parse(temp.toStringAsFixed(2)) : '-');
-
-          double? p = _power(rowData['b3_i'], rowData['b3_v']);
-          addCell(p != null ? double.parse(p.toStringAsFixed(2)) : '-');
-        } else if (v == '报警状态') {
-          final faultKeys = [
-            'faultRing',
-            'faultUps',
-            'faultTestCom',
-            'faultBlade1',
-            'faultIavg',
-            'faultBlade2',
-            'faultContactor',
-            'faultBlade3',
-          ];
-          for (var key in faultKeys) {
-            bool isFault = (rowData[key] as num? ?? 0) != 0;
-            if (key == 'faultBlade1' &&
-                (rowData['errorStop'] as num? ?? 0) != 0) {
-              isFault = true;
-            }
-            addCell(isFault ? '故障' : '无',
-                style: isFault ? redStyle : normalStyle);
-          }
-        } else if (v == '环境温度') {
+        else if (v == '环境温度')
           addCell(rowData['envTemp'] != null
               ? double.parse(rowData['envTemp'].toStringAsFixed(2))
               : '-');
+        else if (v == '叶片1冰层厚度+温度+功率') {
+          addCell(_avg3(rowData['b1_tick_up'], rowData['b1_tick_mid'],
+              rowData['b1_tick_down']));
+          addCell(_avg3(rowData['b1_temp_up'], rowData['b1_temp_mid'],
+              rowData['b1_temp_down']));
+          addCell(_power(rowData['b1_i'], rowData['b1_v']));
+        } else if (v == '叶片2冰层厚度+温度+功率') {
+          addCell(_avg3(rowData['b2_tick_up'], rowData['b2_tick_mid'],
+              rowData['b2_tick_down']));
+          addCell(_avg3(rowData['b2_temp_up'], rowData['b2_temp_mid'],
+              rowData['b2_temp_down']));
+          addCell(_power(rowData['b2_i'], rowData['b2_v']));
+        } else if (v == '叶片3冰层厚度+温度+功率') {
+          addCell(_avg3(rowData['b3_tick_up'], rowData['b3_tick_mid'],
+              rowData['b3_tick_down']));
+          addCell(_avg3(rowData['b3_temp_up'], rowData['b3_temp_mid'],
+              rowData['b3_temp_down']));
+          addCell(_power(rowData['b3_i'], rowData['b3_v']));
         } else if (v == '加热功率') {
-          double? p1 = _power(rowData['b1_i'], rowData['b1_v']);
-          double? p2 = _power(rowData['b2_i'], rowData['b2_v']);
-          double? p3 = _power(rowData['b3_i'], rowData['b3_v']);
-          if (p1 == null && p2 == null && p3 == null) {
-            addCell('-');
-          } else {
-            double totalP = (p1 ?? 0) + (p2 ?? 0) + (p3 ?? 0);
-            addCell(double.parse(totalP.toStringAsFixed(2)));
-          }
+          double p1 = _power(rowData['b1_i'], rowData['b1_v']) as double? ?? 0;
+          double p2 = _power(rowData['b2_i'], rowData['b2_v']) as double? ?? 0;
+          double p3 = _power(rowData['b3_i'], rowData['b3_v']) as double? ?? 0;
+          addCell(double.parse((p1 + p2 + p3).toStringAsFixed(2)));
+        } else if (v == '报警状态') {
+          // 按照要求 8 列
+          addCell((rowData['errorStop'] ?? 0) != 0 ? '故障' : '无',
+              style: (rowData['errorStop'] ?? 0) != 0 ? redStyle : baseStyle);
+          addCell((rowData['faultRing'] ?? 0) != 0 ? '故障' : '无',
+              style: (rowData['faultRing'] ?? 0) != 0 ? redStyle : baseStyle);
+          addCell((rowData['faultUps'] ?? 0) != 0 ? '故障' : '无',
+              style: (rowData['faultUps'] ?? 0) != 0 ? redStyle : baseStyle);
+          addCell((rowData['faultTestCom'] ?? 0) != 0 ? '故障' : '无',
+              style:
+                  (rowData['faultTestCom'] ?? 0) != 0 ? redStyle : baseStyle);
+          addCell((rowData['faultIavg'] ?? 0) != 0 ? '故障' : '无',
+              style: (rowData['faultIavg'] ?? 0) != 0 ? redStyle : baseStyle);
+          addCell((rowData['faultContactor'] ?? 0) != 0 ? '故障' : '无',
+              style:
+                  (rowData['faultContactor'] ?? 0) != 0 ? redStyle : baseStyle);
+          addCell((rowData['faultStick'] ?? 0) != 0 ? '故障' : '无',
+              style: (rowData['faultStick'] ?? 0) != 0 ? redStyle : baseStyle);
+          addCell(
+              ((rowData['faultBlade1'] ?? 0) != 0 ||
+                      (rowData['faultBlade2'] ?? 0) != 0 ||
+                      (rowData['faultBlade3'] ?? 0) != 0)
+                  ? '故障'
+                  : '无',
+              style: ((rowData['faultBlade1'] ?? 0) != 0 ||
+                      (rowData['faultBlade2'] ?? 0) != 0 ||
+                      (rowData['faultBlade3'] ?? 0) != 0)
+                  ? redStyle
+                  : baseStyle);
         }
       }
       rowIndex++;
