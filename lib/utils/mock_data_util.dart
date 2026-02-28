@@ -95,8 +95,8 @@ class MockDataUtil {
             'b1_run_up': 1,
             'b1_run_mid': 1,
             'b1_run_down': 1,
-            'b1_i': _random.nextInt(41).toDouble(),
-            'b1_v': 200.0 + _random.nextDouble() * 20.0,
+            'b1_i': _random.nextInt(8).toDouble(),
+            'b1_v': 50.0,
             // Blade 2
             'b2_temp_up': -30.0 + _random.nextDouble() * 110.0,
             'b2_temp_mid': -30.0 + _random.nextDouble() * 110.0,
@@ -107,8 +107,8 @@ class MockDataUtil {
             'b2_run_up': 1,
             'b2_run_mid': 1,
             'b2_run_down': 1,
-            'b2_i': _random.nextInt(41).toDouble(),
-            'b2_v': 200.0 + _random.nextDouble() * 20.0,
+            'b2_i': _random.nextInt(8).toDouble(),
+            'b2_v': 50.0,
             // Blade 3
             'b3_temp_up': -30.0 + _random.nextDouble() * 110.0,
             'b3_temp_mid': -30.0 + _random.nextDouble() * 110.0,
@@ -119,8 +119,8 @@ class MockDataUtil {
             'b3_run_up': 1,
             'b3_run_mid': 1,
             'b3_run_down': 1,
-            'b3_i': _random.nextInt(41).toDouble(),
-            'b3_v': 200.0 + _random.nextDouble() * 20.0,
+            'b3_i': _random.nextInt(8).toDouble(),
+            'b3_v': 50.0 ,
             // Fault data
             'faultRing': _random.nextDouble() > 0.95 ? 1 : 0,
             'faultUps': _random.nextDouble() > 0.95 ? 1 : 0,

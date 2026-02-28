@@ -206,11 +206,20 @@ class _DeviceHistoryPageState extends State<DeviceHistoryPage> {
   }
 
   // Y轴配置
-  double get _yMin => 0;
+  double get _yMin {
+    final selectedVar = _vars[_selected];
+    if (selectedVar == '叶片温度' || selectedVar == '环境温度') return -30;
+    return 0;
+  }
+
   double get _yMax {
     final selectedVar = _vars[_selected];
     if (selectedVar == '电流') return 40;
     if (selectedVar == '冰层厚度') return 30;
+    if (selectedVar == '叶片温度' || selectedVar == '环境温度') return 80;
+    if (selectedVar == '叶片功率') return 500;
+    if (selectedVar == '加热功率') return 1500;
+    if (selectedVar == '报警状态') return 2;
     return 100;
   }
 
@@ -218,6 +227,10 @@ class _DeviceHistoryPageState extends State<DeviceHistoryPage> {
     final selectedVar = _vars[_selected];
     if (selectedVar == '电流') return 5;
     if (selectedVar == '冰层厚度') return 5;
+    if (selectedVar == '叶片温度' || selectedVar == '环境温度') return 10;
+    if (selectedVar == '叶片功率') return 100;
+    if (selectedVar == '加热功率') return 300;
+    if (selectedVar == '报警状态') return 1;
     return 20;
   }
 
@@ -477,12 +490,12 @@ class _DeviceHistoryPageState extends State<DeviceHistoryPage> {
                                   const Spacer(),
                                   ElevatedButton(
                                     onPressed: () async {
-                                      showDialog(
-                                        context: context,
-                                        barrierDismissible: false,
-                                        builder: (context) => const Center(
-                                            child: CircularProgressIndicator()),
-                                      );
+                                      // showDialog(
+                                      //   context: context,
+                                      //   barrierDismissible: false,
+                                      //   builder: (context) => const Center(
+                                      //       child: CircularProgressIndicator()),
+                                      // );
                                       try {
                                         await MockDataUtil
                                             .generateMockHistoryData();
