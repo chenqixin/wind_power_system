@@ -39,7 +39,7 @@ class _ExportDialogState extends State<ExportDialog> {
     'C相电流',
     '环境温度',
     '叶片1冰层厚度+温度+功率',
-    '叶片2冰层通度+温度+功率',
+    '叶片2冰层厚度+温度+功率',
     '叶片3冰层厚度+温度+功率',
     '加热功率',
     '报警状态',
@@ -209,11 +209,13 @@ class _ExportDialogState extends State<ExportDialog> {
         addHeaderCell('B相电流(A)');
       else if (v == 'C相电流')
         addHeaderCell('C相电流(A)');
-      else if (v == '叶片1冰层厚度+温度+功率') {
+      else if (v == '环境温度') {
+        addHeaderCell('环境温度(℃)');
+      } else if (v == '叶片1冰层厚度+温度+功率') {
         addHeaderCell('叶片1冰层厚度(mm)');
         addHeaderCell('叶片1温度(℃)');
         addHeaderCell('叶片1功率(W)');
-      } else if (v == '叶片2冰层通度+温度+功率') {
+      } else if (v == '叶片2冰层厚度+温度+功率') {
         addHeaderCell('叶片2冰层厚度(mm)');
         addHeaderCell('叶片2温度(℃)');
         addHeaderCell('叶片2功率(W)');
@@ -221,6 +223,8 @@ class _ExportDialogState extends State<ExportDialog> {
         addHeaderCell('叶片3冰层厚度(mm)');
         addHeaderCell('叶片3温度(℃)');
         addHeaderCell('叶片3功率(W)');
+      } else if (v == '加热功率') {
+        addHeaderCell('加热功率(W)');
       } else if (v == '报警状态') {
         final tiles = [
           '环网通讯故障',
@@ -235,10 +239,6 @@ class _ExportDialogState extends State<ExportDialog> {
         for (var t in tiles) {
           addHeaderCell(t);
         }
-      } else if (v == '环境温度') {
-        addHeaderCell('环境温度(℃)');
-      } else if (v == '加热功率') {
-        addHeaderCell('加热功率(W)');
       }
     }
   }
@@ -401,7 +401,9 @@ class _ExportDialogState extends State<ExportDialog> {
         var cell = sheet.cell(ex.CellIndex.indexByColumnRow(
             columnIndex: colIndex, rowIndex: rowIndex));
         if (value is num) {
-          cell.value = ex.DoubleCellValue(value.toDouble());
+          // 将数字格式化为 2 位小数，并以文本形式存储以确保保留末尾的 0
+          // 如果需要保留数值类型且格式化，可以使用 CellStyle 的 numberFormat
+          cell.value = ex.TextCellValue(value.toStringAsFixed(2));
         } else {
           cell.value = ex.TextCellValue(value?.toString() ?? '-');
         }
@@ -415,48 +417,44 @@ class _ExportDialogState extends State<ExportDialog> {
         if (!_selectedVars.contains(v)) continue;
 
         if (v == 'A相电流')
-          addCell(rowData['aI'] != null
-              ? double.parse(rowData['aI'].toStringAsFixed(2))
-              : '-');
+          addCell(rowData['aI'] ?? '-');
         else if (v == 'B相电流')
-          addCell(rowData['bI'] != null
-              ? double.parse(rowData['bI'].toStringAsFixed(2))
-              : '-');
+          addCell(rowData['bI'] ?? '-');
         else if (v == 'C相电流')
-          addCell(rowData['cI'] != null
-              ? double.parse(rowData['cI'].toStringAsFixed(2))
-              : '-');
+          addCell(rowData['cI'] ?? '-');
         else if (v == '环境温度')
-          addCell(rowData['envTemp'] != null
-              ? double.parse(rowData['envTemp'].toStringAsFixed(2))
-              : '-');
+          addCell(rowData['envTemp'] ?? '-');
         else if (v == '叶片1冰层厚度+温度+功率') {
           addCell(_avg3(rowData['b1_tick_up'], rowData['b1_tick_mid'],
-              rowData['b1_tick_down']));
+                  rowData['b1_tick_down']) ??
+              '-');
           addCell(_avg3(rowData['b1_temp_up'], rowData['b1_temp_mid'],
-              rowData['b1_temp_down']));
-          addCell(_power(rowData['b1_i'], rowData['b1_v']));
+                  rowData['b1_temp_down']) ??
+              '-');
+          addCell(_power(rowData['b1_i'], rowData['b1_v']) ?? '-');
         } else if (v == '叶片2冰层厚度+温度+功率') {
           addCell(_avg3(rowData['b2_tick_up'], rowData['b2_tick_mid'],
-              rowData['b2_tick_down']));
+                  rowData['b2_tick_down']) ??
+              '-');
           addCell(_avg3(rowData['b2_temp_up'], rowData['b2_temp_mid'],
-              rowData['b2_temp_down']));
-          addCell(_power(rowData['b2_i'], rowData['b2_v']));
+                  rowData['b2_temp_down']) ??
+              '-');
+          addCell(_power(rowData['b2_i'], rowData['b2_v']) ?? '-');
         } else if (v == '叶片3冰层厚度+温度+功率') {
           addCell(_avg3(rowData['b3_tick_up'], rowData['b3_tick_mid'],
-              rowData['b3_tick_down']));
+                  rowData['b3_tick_down']) ??
+              '-');
           addCell(_avg3(rowData['b3_temp_up'], rowData['b3_temp_mid'],
-              rowData['b3_temp_down']));
-          addCell(_power(rowData['b3_i'], rowData['b3_v']));
+                  rowData['b3_temp_down']) ??
+              '-');
+          addCell(_power(rowData['b3_i'], rowData['b3_v']) ?? '-');
         } else if (v == '加热功率') {
-          double p1 = _power(rowData['b1_i'], rowData['b1_v']) as double? ?? 0;
-          double p2 = _power(rowData['b2_i'], rowData['b2_v']) as double? ?? 0;
-          double p3 = _power(rowData['b3_i'], rowData['b3_v']) as double? ?? 0;
-          addCell(double.parse((p1 + p2 + p3).toStringAsFixed(2)));
+          double p1 = _power(rowData['b1_i'], rowData['b1_v']) ?? 0;
+          double p2 = _power(rowData['b2_i'], rowData['b2_v']) ?? 0;
+          double p3 = _power(rowData['b3_i'], rowData['b3_v']) ?? 0;
+          addCell(p1 + p2 + p3);
         } else if (v == '报警状态') {
           // 按照要求 8 列
-          addCell((rowData['errorStop'] ?? 0) != 0 ? '故障' : '无',
-              style: (rowData['errorStop'] ?? 0) != 0 ? redStyle : baseStyle);
           addCell((rowData['faultRing'] ?? 0) != 0 ? '故障' : '无',
               style: (rowData['faultRing'] ?? 0) != 0 ? redStyle : baseStyle);
           addCell((rowData['faultUps'] ?? 0) != 0 ? '故障' : '无',
@@ -464,24 +462,17 @@ class _ExportDialogState extends State<ExportDialog> {
           addCell((rowData['faultTestCom'] ?? 0) != 0 ? '故障' : '无',
               style:
                   (rowData['faultTestCom'] ?? 0) != 0 ? redStyle : baseStyle);
+          addCell((rowData['faultBlade1'] ?? 0) != 0 ? '故障' : '无',
+              style: (rowData['faultBlade1'] ?? 0) != 0 ? redStyle : baseStyle);
           addCell((rowData['faultIavg'] ?? 0) != 0 ? '故障' : '无',
               style: (rowData['faultIavg'] ?? 0) != 0 ? redStyle : baseStyle);
+          addCell((rowData['faultBlade2'] ?? 0) != 0 ? '故障' : '无',
+              style: (rowData['faultBlade2'] ?? 0) != 0 ? redStyle : baseStyle);
           addCell((rowData['faultContactor'] ?? 0) != 0 ? '故障' : '无',
               style:
                   (rowData['faultContactor'] ?? 0) != 0 ? redStyle : baseStyle);
-          addCell((rowData['faultStick'] ?? 0) != 0 ? '故障' : '无',
-              style: (rowData['faultStick'] ?? 0) != 0 ? redStyle : baseStyle);
-          addCell(
-              ((rowData['faultBlade1'] ?? 0) != 0 ||
-                      (rowData['faultBlade2'] ?? 0) != 0 ||
-                      (rowData['faultBlade3'] ?? 0) != 0)
-                  ? '故障'
-                  : '无',
-              style: ((rowData['faultBlade1'] ?? 0) != 0 ||
-                      (rowData['faultBlade2'] ?? 0) != 0 ||
-                      (rowData['faultBlade3'] ?? 0) != 0)
-                  ? redStyle
-                  : baseStyle);
+          addCell((rowData['faultBlade3'] ?? 0) != 0 ? '故障' : '无',
+              style: (rowData['faultBlade3'] ?? 0) != 0 ? redStyle : baseStyle);
         }
       }
       rowIndex++;
