@@ -367,6 +367,8 @@ class _HomePageState extends State<HomePage> {
     try {
       await Api.getDeviceDetailTcp(
         sn: sn,
+        ip: ip,
+        port: port,
         successCallback: (data) {
           try {
             final detail = model.DeviceDetailData.fromJson(data);
@@ -392,11 +394,23 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _listenSnError() async {
-    await TCPConfig.ensureLoaded();
-    await WebSocketManager().connectTcp(TCPConfig.host, TCPConfig.port,
-        timeout: const Duration(seconds: 5));
+    final devs = await AppDatabase.allDevices();
+    final mgr = WebSocketManager();
+    for (final dev in devs) {
+      final ip = (dev['ip'] as String?) ?? '';
+      final port = (dev['port'] as int?) ?? 0;
+      if (ip.isNotEmpty && port != 0) {
+        // 尝试连接每一个设备。WebSocketManager 内部会管理多连接。
+        mgr
+            .connectTcp(ip, port, timeout: const Duration(seconds: 5))
+            .catchError((e) {
+          print("监听设备错误时连接失败 ($ip:$port): $e");
+        });
+      }
+    }
+
     _snErrorSub?.cancel();
-    _snErrorSub = WebSocketManager().stream.listen((event) async {
+    _snErrorSub = mgr.stream.listen((event) async {
       try {
         final obj = json.decode(event);
         if (obj is Map<String, dynamic>) {
@@ -497,7 +511,9 @@ class _HomePageState extends State<HomePage> {
                             barrierDismissible: true,
                             builder: (_) => AddSnDialog(),
                           );
-                          if (res is Map<String, dynamic>) {}
+                          if (res != null) {
+                            _loadItems().then((_) => _listenSnError());
+                          }
                         },
                       ),
                     ],

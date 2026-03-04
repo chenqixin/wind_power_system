@@ -16,6 +16,7 @@ import 'package:wind_power_system/genernal/extension/text.dart';
 import 'package:wind_power_system/content_navigator.dart';
 import 'package:dash_painter/dash_painter.dart';
 import 'package:wind_power_system/network/http/api_util.dart';
+import 'package:wind_power_system/db/app_database.dart';
 import 'package:wind_power_system/model/DeviceDetailData.dart' as model;
 import 'package:wind_power_system/core/utils/power_utils.dart';
 import 'package:wind_power_system/view/notice_dialog.dart';
@@ -35,6 +36,8 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
   bool _heatingMinutesInitialized = false;
   bool _iSetInitialized = false;
   model.DeviceDetailData? detail;
+  String? _ip;
+  int? _port;
   Timer? _pollTimer;
   late AnimationController _blinkController;
   late Animation<double> _opacityAnim;
@@ -77,8 +80,11 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
 
   //请求数据
   void getSNDetail(String sn) {
+    if (_ip == null || _port == null) return;
     Api.getDeviceDetailTcp(
       sn: sn,
+      ip: _ip!,
+      port: _port!,
       successCallback: (data) {
         final d = model.DeviceDetailData.fromJson(data);
         if (!mounted) return;
@@ -572,10 +578,7 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
   void initState() {
     // TODO: implement initState
     super.initState();
-    getSNDetail(widget.sn);
-    _pollTimer = Timer.periodic(const Duration(seconds: 3), (_) {
-      getSNDetail(widget.sn);
-    });
+    _loadDevice();
     _fzController.text = '';
     _blinkController = AnimationController(
       vsync: this,
@@ -583,6 +586,22 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
     )..repeat(reverse: true);
     _opacityAnim = Tween<double>(begin: 0.6, end: 1.0).animate(
         CurvedAnimation(parent: _blinkController, curve: Curves.easeInOut));
+  }
+
+  Future<void> _loadDevice() async {
+    final dev = await AppDatabase.getDeviceBySn(widget.sn);
+    if (dev != null) {
+      if (!mounted) return;
+      setState(() {
+        _ip = dev['ip'] as String?;
+        _port = dev['port'] as int?;
+      });
+      getSNDetail(widget.sn);
+      _pollTimer?.cancel();
+      _pollTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+        getSNDetail(widget.sn);
+      });
+    }
   }
 
   @override
@@ -627,6 +646,8 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
 
     await Api.submitManualHeatingTcp(
       sn: widget.sn,
+      ip: _ip ?? '',
+      port: _port ?? 0,
       heatingOn: heatingOn,
       hotTime: hotTime,
       iSet: iSet,
@@ -825,7 +846,9 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
                                               InkWell(
                                                 onTap: () async {
                                                   await Api.emergencyStopTcp(
-                                                      sn: widget.sn);
+                                                      sn: widget.sn,
+                                                      ip: _ip ?? '',
+                                                      port: _port ?? 0);
                                                   //getSNDetail(widget.sn);
                                                 },
                                                 child: Container(
@@ -859,7 +882,9 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
                                               InkWell(
                                                 onTap: () async {
                                                   await Api.resetTcp(
-                                                      sn: widget.sn);
+                                                      sn: widget.sn,
+                                                      ip: _ip ?? '',
+                                                      port: _port ?? 0);
                                                 },
                                                 child: Container(
                                                   width: 85,

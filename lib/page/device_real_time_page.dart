@@ -17,6 +17,7 @@ import 'package:wind_power_system/genernal/extension/text.dart';
 import 'package:wind_power_system/content_navigator.dart';
 import 'package:dash_painter/dash_painter.dart';
 import 'package:wind_power_system/network/http/api_util.dart';
+import 'package:wind_power_system/db/app_database.dart';
 import 'package:wind_power_system/model/DeviceDetailData.dart' as model;
 import 'package:wind_power_system/view/charts/realtime_thickness_chart.dart';
 
@@ -34,6 +35,8 @@ class DeviceRealTimePage extends StatefulWidget {
 class _DeviceRealTimePageState extends State<DeviceRealTimePage> {
   final Random _rnd = Random();
   model.DeviceDetailData? detail;
+  String? _ip;
+  int? _port;
   Timer? _pollTimer;
 
   Widget _title(String text) {
@@ -119,8 +122,11 @@ class _DeviceRealTimePageState extends State<DeviceRealTimePage> {
   }
 
   void getSNDetail() async {
+    if (_ip == null || _port == null) return;
     await Api.getDeviceDetailTcp(
       sn: widget.sn,
+      ip: _ip!,
+      port: _port!,
       successCallback: (data) {
         final d = model.DeviceDetailData.fromJson(data);
         if (!mounted) return;
@@ -135,10 +141,22 @@ class _DeviceRealTimePageState extends State<DeviceRealTimePage> {
   @override
   void initState() {
     super.initState();
-    getSNDetail();
-    _pollTimer?.cancel();
-    _pollTimer =
-        Timer.periodic(const Duration(seconds: 2), (_) => getSNDetail());
+    _loadDevice();
+  }
+
+  Future<void> _loadDevice() async {
+    final dev = await AppDatabase.getDeviceBySn(widget.sn);
+    if (dev != null) {
+      if (!mounted) return;
+      setState(() {
+        _ip = dev['ip'] as String?;
+        _port = dev['port'] as int?;
+      });
+      getSNDetail();
+      _pollTimer?.cancel();
+      _pollTimer =
+          Timer.periodic(const Duration(seconds: 2), (_) => getSNDetail());
+    }
   }
 
   @override

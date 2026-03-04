@@ -342,6 +342,12 @@ class AppDatabase {
     return await db.query('devices');
   }
 
+  static Future<Map<String, Object?>?> getDeviceBySn(String sn) async {
+    final db = await instance();
+    final res = await db.query('devices', where: 'sn = ?', whereArgs: [sn]);
+    return res.isNotEmpty ? res.first : null;
+  }
+
   /// 判断设备 `sn` 是否已存在
   static Future<bool> deviceExistsBySn(String sn) async {
     final db = await instance();

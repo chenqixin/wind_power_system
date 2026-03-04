@@ -25,12 +25,11 @@ class WebSocketManager {
   WebSocketChannel? _channel;
   bool _connected = false;
 
-  Socket? _tcpSocket;
-  StreamSubscription<List<int>>? _tcpSub;
-  String? _tcpHost;
-  int? _tcpPort;
-  bool _connectingTcp = false;
-  String _tcpBuffer = '';
+  // TCP 多连接管理
+  final Map<String, _TcpConnection> _tcpConnections = {};
+
+  // 为了向后兼容，保留对“最后一次”或“当前”连接的引用
+  String? _lastTcpKey;
 
   bool _manuallyClosed = false;
 
@@ -39,6 +38,8 @@ class WebSocketManager {
 
   final _msgStream = StreamController<String>.broadcast();
   Stream<String> get stream => _msgStream.stream;
+
+  String _tcpKey(String host, int port) => "$host:$port";
 
   void connect(String url) {
     _manuallyClosed = false;
@@ -75,70 +76,67 @@ class WebSocketManager {
 
   Future<void> connectTcp(String host, int port, {Duration? timeout}) async {
     _manuallyClosed = false;
-    await TCPConfig.ensureLoaded();
-    final targetHost = TCPConfig.host;
-    final targetPort = TCPConfig.port;
-    if (_connectingTcp && _tcpHost == targetHost && _tcpPort == targetPort) {
-      return;
-    }
-    if (_tcpSocket != null &&
-        _tcpHost == targetHost &&
-        _tcpPort == targetPort) {
-      return;
-    }
-    if (_tcpSocket != null &&
-        (_tcpHost != targetHost || _tcpPort != targetPort)) {
-      _closeTcpOnly();
+    final key = _tcpKey(host, port);
+    _lastTcpKey = key;
+
+    var conn = _tcpConnections[key];
+    if (conn == null) {
+      conn = _TcpConnection(host, port);
+      _tcpConnections[key] = conn;
     }
 
-    _reconnectTimer?.cancel();
-    _tcpHost = targetHost;
-    _tcpPort = targetPort;
-    _connectingTcp = true;
-    print("TCP connecting: $targetHost:$targetPort");
+    if (conn.connecting || (conn.socket != null && conn.connected)) {
+      return;
+    }
+
+    conn.reconnectTimer?.cancel();
+    conn.connecting = true;
+    print("TCP connecting: $host:$port");
     final t = timeout ?? const Duration(seconds: 5);
 
     try {
-      _tcpSocket = await Socket.connect(targetHost, targetPort, timeout: t);
-      _connected = true;
-      _connectingTcp = false;
-      final local = "${_tcpSocket!.address.address}:${_tcpSocket!.port}";
-      final remote =
-          "${_tcpSocket!.remoteAddress.address}:${_tcpSocket!.remotePort}";
+      final socket = await Socket.connect(host, port, timeout: t);
+      conn.socket = socket;
+      conn.connected = true;
+      conn.connecting = false;
+      _connected = true; // 只要有一个连上，全局状态暂且设为 true
+
+      final local = "${socket.address.address}:${socket.port}";
+      final remote = "${socket.remoteAddress.address}:${socket.remotePort}";
       print("TCP 已连接 $local -> $remote");
 
-      _tcpSub = _tcpSocket!.listen(
+      conn.sub = socket.listen(
         (data) {
           final chunk = _bytesToPrintable(data);
-          print("TCP 收到: $chunk");
-          _tcpBuffer += chunk;
+          print("TCP [$key] 收到: $chunk");
+          conn!.buffer += chunk;
           while (true) {
-            final idx = _tcpBuffer.indexOf('\n');
+            final idx = conn.buffer.indexOf('\n');
             if (idx < 0) break;
-            final line = _tcpBuffer.substring(0, idx);
-            _tcpBuffer = _tcpBuffer.substring(idx + 1);
+            final line = conn.buffer.substring(0, idx);
+            conn.buffer = conn.buffer.substring(idx + 1);
             _handleTcpLine(line);
           }
         },
         onError: (e) {
-          print("TCP error: $e");
-          _connected = false;
-          _connectingTcp = false;
-          if (!_manuallyClosed) _reconnectTcp(targetHost, targetPort, t);
+          print("TCP [$key] error: $e");
+          conn!.connected = false;
+          conn.connecting = false;
+          if (!_manuallyClosed) _reconnectTcp(host, port, t);
         },
         onDone: () {
-          print("TCP closed");
-          _connected = false;
-          _connectingTcp = false;
-          if (!_manuallyClosed) _reconnectTcp(targetHost, targetPort, t);
+          print("TCP [$key] closed");
+          conn!.connected = false;
+          conn.connecting = false;
+          if (!_manuallyClosed) _reconnectTcp(host, port, t);
         },
         cancelOnError: true,
       );
     } catch (e) {
-      print("TCP connect exception: $e");
-      _connected = false;
-      _connectingTcp = false;
-      if (!_manuallyClosed) _reconnectTcp(targetHost, targetPort, t);
+      print("TCP [$key] connect exception: $e");
+      conn.connected = false;
+      conn.connecting = false;
+      if (!_manuallyClosed) _reconnectTcp(host, port, t);
     }
   }
 
@@ -195,40 +193,69 @@ class WebSocketManager {
   }
 
   void _reconnectTcp(String host, int port, Duration timeout) {
-    if (_reconnectTimer != null) return;
-    print("TCP 3秒后重连...");
-    _reconnectTimer = Timer(const Duration(seconds: 3), () {
-      _reconnectTimer = null;
+    final key = _tcpKey(host, port);
+    final conn = _tcpConnections[key];
+    if (conn == null || conn.reconnectTimer != null) return;
+
+    print("TCP [$key] 3秒后重连...");
+    conn.reconnectTimer = Timer(const Duration(seconds: 3), () {
+      conn.reconnectTimer = null;
       if (!_manuallyClosed) {
         connectTcp(host, port, timeout: timeout);
       }
     });
   }
 
-  void disconnectTcp() {
-    _reconnectTimer?.cancel();
-    _closeTcpOnly();
-    _connected = false;
+  void disconnectTcp({String? host, int? port}) {
+    if (host != null && port != null) {
+      final key = _tcpKey(host, port);
+      final conn = _tcpConnections[key];
+      if (conn != null) {
+        conn.reconnectTimer?.cancel();
+        conn.sub?.cancel();
+        conn.socket?.destroy();
+        conn.connected = false;
+        _tcpConnections.remove(key);
+      }
+    } else {
+      // 断开所有
+      for (final conn in _tcpConnections.values) {
+        conn.reconnectTimer?.cancel();
+        conn.sub?.cancel();
+        conn.socket?.destroy();
+        conn.connected = false;
+      }
+      _tcpConnections.clear();
+      _connected = false;
+    }
   }
 
-  Future<void> restartTcp({Duration? delay, Duration? timeout}) async {
+  Future<void> restartTcp(
+      {String? host, int? port, Duration? delay, Duration? timeout}) async {
     final d = delay ?? const Duration(milliseconds: 300);
-    await TCPConfig.ensureLoaded();
-    final host = TCPConfig.host;
-    final port = TCPConfig.port;
-    _manuallyClosed = false;
-    _reconnectTimer?.cancel();
-    _closeTcpOnly();
-    await Future.delayed(d);
-    await connectTcp(host, port,
-        timeout: timeout ?? const Duration(seconds: 5));
-  }
 
-  void _closeTcpOnly() {
-    _tcpSub?.cancel();
-    _tcpSocket?.destroy();
-    _tcpSub = null;
-    _tcpSocket = null;
+    String? targetHost = host;
+    int? targetPort = port;
+
+    if (targetHost == null || targetPort == null) {
+      if (_lastTcpKey != null) {
+        final parts = _lastTcpKey!.split(':');
+        targetHost = parts[0];
+        targetPort = int.tryParse(parts[1]);
+      }
+    }
+
+    if (targetHost == null || targetPort == null) {
+      await TCPConfig.ensureLoaded();
+      targetHost = TCPConfig.host;
+      targetPort = TCPConfig.port;
+    }
+
+    _manuallyClosed = false;
+    disconnectTcp(host: targetHost, port: targetPort);
+    await Future.delayed(d);
+    await connectTcp(targetHost!, targetPort!,
+        timeout: timeout ?? const Duration(seconds: 5));
   }
 
   void send(String message) {
@@ -237,20 +264,32 @@ class WebSocketManager {
         _channel!.sink.add(message);
         return;
       }
-      if (_tcpSocket != null) {
-        _tcpSocket!.add(utf8.encode(message));
+      // 如果没有指定，尝试发送到最后一个连接
+      if (_lastTcpKey != null) {
+        final conn = _tcpConnections[_lastTcpKey];
+        if (conn != null && conn.connected && conn.socket != null) {
+          conn.socket!.add(utf8.encode(message));
+        }
       }
     }
   }
 
-  void sendLine(String line) {
-    if (_connected && _tcpSocket != null) {
-      _tcpSocket!.add(utf8.encode("$line\n"));
+  void sendLine(String line, {String? host, int? port}) {
+    _manuallyClosed = false;
+    _TcpConnection? conn;
+    if (host != null && port != null) {
+      conn = _tcpConnections[_tcpKey(host, port)];
+    } else if (_lastTcpKey != null) {
+      conn = _tcpConnections[_lastTcpKey!];
+    }
+
+    if (conn != null && conn.connected && conn.socket != null) {
+      conn.socket!.add(utf8.encode("$line\n"));
     }
   }
 
-  void requestDetail(String sn) {
-    sendLine("detail sn=$sn");
+  void requestDetail(String sn, {String? host, int? port}) {
+    sendLine("detail sn=$sn", host: host, port: port);
   }
 
   void close() {
@@ -261,7 +300,25 @@ class WebSocketManager {
     _heartBeatTimer?.cancel();
     _reconnectTimer?.cancel();
     _channel?.sink.close();
-    _tcpSub?.cancel();
-    _tcpSocket?.destroy();
+
+    for (final conn in _tcpConnections.values) {
+      conn.reconnectTimer?.cancel();
+      conn.sub?.cancel();
+      conn.socket?.destroy();
+    }
+    _tcpConnections.clear();
   }
+}
+
+class _TcpConnection {
+  final String host;
+  final int port;
+  Socket? socket;
+  StreamSubscription<List<int>>? sub;
+  String buffer = '';
+  bool connecting = false;
+  bool connected = false;
+  Timer? reconnectTimer;
+
+  _TcpConnection(this.host, this.port);
 }

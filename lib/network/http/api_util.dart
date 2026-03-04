@@ -64,14 +64,13 @@ class Api {
 
   static Future<void> getDeviceDetailTcp({
     required String sn,
+    required String ip,
+    required int port,
     required Function(dynamic data) successCallback,
     Function(int code, String? msg)? failCallback,
   }) async {
-    final rows = await AppDatabase.allDevices();
-    await TCPConfig.ensureLoaded();
-    await WebSocketManager().connectTcp(TCPConfig.host, TCPConfig.port,
-        timeout: const Duration(seconds: 5));
     final mgr = WebSocketManager();
+    await mgr.connectTcp(ip, port, timeout: const Duration(seconds: 5));
     final completer = Completer<void>();
     late StreamSubscription<String> sub;
     sub = mgr.stream.listen((event) {
@@ -79,7 +78,8 @@ class Api {
         final obj = json.decode(event);
         if (obj is Map<String, dynamic>) {
           final cmd = obj['cmd'];
-          if (cmd == 'sn_detail') {
+          final resSn = obj['sn']?.toString();
+          if (cmd == 'sn_detail' && (resSn == null || resSn == sn)) {
             final rawCode = obj['code'];
             final code =
                 rawCode is int ? rawCode : int.tryParse('$rawCode') ?? 0;
@@ -105,12 +105,11 @@ class Api {
 
   static Future<void> emergencyStopTcp({
     required String sn,
+    required String ip,
+    required int port,
   }) async {
-    await AppDatabase.allDevices();
-    await TCPConfig.ensureLoaded();
-    await WebSocketManager().connectTcp(TCPConfig.host, TCPConfig.port,
-        timeout: const Duration(seconds: 5));
     final mgr = WebSocketManager();
+    await mgr.connectTcp(ip, port, timeout: const Duration(seconds: 5));
     final completer = Completer<void>();
     late StreamSubscription<String> sub;
     sub = mgr.stream.listen((event) {
@@ -144,12 +143,11 @@ class Api {
 
   static Future<void> resetTcp({
     required String sn,
+    required String ip,
+    required int port,
   }) async {
-    await AppDatabase.allDevices();
-    await TCPConfig.ensureLoaded();
-    await WebSocketManager().connectTcp(TCPConfig.host, TCPConfig.port,
-        timeout: const Duration(seconds: 5));
     final mgr = WebSocketManager();
+    await mgr.connectTcp(ip, port, timeout: const Duration(seconds: 5));
     final completer = Completer<void>();
     late StreamSubscription<String> sub;
     sub = mgr.stream.listen((event) {
@@ -187,15 +185,14 @@ class Api {
 
   static Future<void> submitManualHeatingTcp({
     required String sn,
+    required String ip,
+    required int port,
     required bool heatingOn,
     int? hotTime,
     num? iSet,
   }) async {
-    await AppDatabase.allDevices();
-    await TCPConfig.ensureLoaded();
-    await WebSocketManager().connectTcp(TCPConfig.host, TCPConfig.port,
-        timeout: const Duration(seconds: 5));
     final mgr = WebSocketManager();
+    await mgr.connectTcp(ip, port, timeout: const Duration(seconds: 5));
     final completer = Completer<void>();
     late StreamSubscription<String> sub;
     sub = mgr.stream.listen((event) {
@@ -234,10 +231,7 @@ class Api {
   static Future<void> syncClockTcp({
     DateTime? time,
   }) async {
-    await AppDatabase.allDevices();
-    await TCPConfig.ensureLoaded();
-    await WebSocketManager().connectTcp(TCPConfig.host, TCPConfig.port,
-        timeout: const Duration(seconds: 5));
+    final devs = await AppDatabase.allDevices();
     final now = time ?? DateTime.now();
     final y = now.year;
     final m = now.month;
@@ -246,9 +240,23 @@ class Api {
     final min = now.minute;
     final s = now.second;
     final mgr = WebSocketManager();
-    mgr.sendLine(
-        "clock  year=$y month=$m day=$d hour=$h minute=$min second=$s");
-    print(
-        "请求 clock  year=$y month=$m day=$d hour=$h minute=$min second=$s");
+
+    for (final dev in devs) {
+      final sn = (dev['sn'] as String?) ?? '';
+      final ip = (dev['ip'] as String?) ?? '';
+      final port = (dev['port'] as int?) ?? 0;
+      if (ip.isEmpty || port == 0) continue;
+
+      try {
+        await mgr.connectTcp(ip, port, timeout: const Duration(seconds: 3));
+        mgr.sendLine(
+            "clock  year=$y month=$m day=$d hour=$h minute=$min second=$s");
+        print("请求设备 $sn ($ip:$port) clock");
+        // 这里不等待响应，直接处理下一个设备
+        await Future.delayed(const Duration(milliseconds: 200));
+      } catch (e) {
+        print("同步设备 $sn 时间失败: $e");
+      }
+    }
   }
 }
