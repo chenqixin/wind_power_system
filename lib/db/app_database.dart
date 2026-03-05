@@ -356,6 +356,13 @@ class AppDatabase {
     return rows.isNotEmpty;
   }
 
+  /// 删除设备及其记录
+  static Future<int> deleteDevice(String sn) async {
+    final db = await instance();
+    await _ensureDeviceTable();
+    return await db.delete('devices', where: 'sn = ?', whereArgs: [sn]);
+  }
+
   /// 插入设备记录（若 `sn` 已存在则抛出 `sn_exists`）
   static Future<void> insertDevice({
     required String sn,

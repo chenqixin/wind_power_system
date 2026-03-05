@@ -24,6 +24,7 @@ import 'package:wind_power_system/core/config/tcp_config.dart';
 import '../content_navigator.dart';
 import 'add_user_dialog.dart';
 import 'add_sn_dialog.dart';
+import 'delete_device_dialog.dart';
 import 'error_alarm_dialog.dart';
 import 'package:wind_power_system/core/utils/fileutils.dart';
 import 'package:wind_power_system/core/utils/print_utils.dart';
@@ -585,127 +586,145 @@ class _HomePageState extends State<HomePage> {
                             setState(() => hoverIndex = null);
                             _hideTooltip();
                           },
-                          child: InkWell(
-                            onTap: () {
-                              //跳转到详情
-                              ContentNavigator.navigatorKey.currentState!
-                                  .pushNamed(
-                                '/detail',
-                                arguments: it.sn,
+                          child: GestureDetector(
+                            onSecondaryTapDown: (details) async {
+                              final res = await showDialog(
+                                context: context,
+                                barrierDismissible: true,
+                                builder: (_) => DeleteDeviceDialog(sn: it.sn),
                               );
+                              if (res == true) {
+                                await AppDatabase.deleteDevice(it.sn);
+                                if (mounted) {
+                                  _loadItems();
+                                }
+                              }
                             },
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: HexColor('#C1D8F0'),
-                                borderRadius: BorderRadius.circular(5),
-                              ),
-                              padding: const EdgeInsets.all(10),
-                              child: IntrinsicHeight(
-                                child: Row(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.stretch,
-                                  children: [
-                                    AspectRatio(
-                                      aspectRatio: 1, // 正方形
-                                      child: Image.asset(
-                                        'ic_fc.png'.imagePath,
-                                        fit: BoxFit.cover, // 铺满
+                            child: InkWell(
+                              onTap: () {
+                                //跳转到详情
+                                ContentNavigator.navigatorKey.currentState!
+                                    .pushNamed(
+                                  '/detail',
+                                  arguments: it.sn,
+                                );
+                              },
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: HexColor('#C1D8F0'),
+                                  borderRadius: BorderRadius.circular(5),
+                                ),
+                                padding: const EdgeInsets.all(10),
+                                child: IntrinsicHeight(
+                                  child: Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    children: [
+                                      AspectRatio(
+                                        aspectRatio: 1, // 正方形
+                                        child: Image.asset(
+                                          'ic_fc.png'.imagePath,
+                                          fit: BoxFit.cover, // 铺满
+                                        ),
                                       ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: Row(
-                                        children: [
-                                          Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                it.sn,
-                                                style: textMain,
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                              Spacer(),
-                                              Text('冰层等级', style: textSub),
-                                              const SizedBox(height: 2),
-                                              Text(
-                                                _avgIceThickness(it
-                                                            .details?.winddata)
-                                                        ?.toStringAsFixed(2) ??
-                                                    '-',
-                                                style: textCon,
-                                              ),
-                                            ],
-                                          ),
-                                          Expanded(
-                                            child: Column(
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Row(
+                                          children: [
+                                            Column(
                                               crossAxisAlignment:
                                                   CrossAxisAlignment.start,
                                               children: [
-                                                Row(
-                                                  children: [
-                                                    Image.asset(
-                                                      _statusImg(it).imagePath,
-                                                      width: 15,
-                                                      height: 15,
-                                                    ),
-                                                    const SizedBox(
-                                                      width: 2,
-                                                    ),
-                                                    Text(
-                                                      _statusText(it),
-                                                      style: textSub,
-                                                      maxLines: 1,
-                                                      overflow:
-                                                          TextOverflow.ellipsis,
-                                                    ),
-                                                  ],
+                                                Text(
+                                                  it.sn,
+                                                  style: textMain,
+                                                  maxLines: 1,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
                                                 ),
                                                 Spacer(),
-                                                Padding(
-                                                  padding:
-                                                      const EdgeInsets.only(
-                                                          left: 17),
-                                                  child: Text('加热功率',
-                                                      style: textSub),
-                                                ),
+                                                Text('冰层等级', style: textSub),
                                                 const SizedBox(height: 2),
-                                                Padding(
-                                                  padding:
-                                                      const EdgeInsets.only(
-                                                          left: 17),
-                                                  child: Row(
+                                                Text(
+                                                  _avgIceThickness(it.details
+                                                              ?.winddata)
+                                                          ?.toStringAsFixed(
+                                                              2) ??
+                                                      '-',
+                                                  style: textCon,
+                                                ),
+                                              ],
+                                            ),
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Row(
                                                     children: [
-                                                      Text(
-                                                        powerValueUnit(
-                                                                it.details)
-                                                            .value,
-                                                        style: textCon,
+                                                      Image.asset(
+                                                        _statusImg(it)
+                                                            .imagePath,
+                                                        width: 15,
+                                                        height: 15,
                                                       ),
                                                       const SizedBox(
                                                         width: 2,
                                                       ),
                                                       Text(
-                                                        powerValueUnit(
-                                                                it.details)
-                                                            .unit,
-                                                        style: TextStyle(
-                                                          fontSize: 12,
-                                                          color: HexColor(
-                                                              '#133F72'),
-                                                        ),
+                                                        _statusText(it),
+                                                        style: textSub,
+                                                        maxLines: 1,
+                                                        overflow: TextOverflow
+                                                            .ellipsis,
                                                       ),
                                                     ],
                                                   ),
-                                                ),
-                                              ],
+                                                  Spacer(),
+                                                  Padding(
+                                                    padding:
+                                                        const EdgeInsets.only(
+                                                            left: 17),
+                                                    child: Text('加热功率',
+                                                        style: textSub),
+                                                  ),
+                                                  const SizedBox(height: 2),
+                                                  Padding(
+                                                    padding:
+                                                        const EdgeInsets.only(
+                                                            left: 17),
+                                                    child: Row(
+                                                      children: [
+                                                        Text(
+                                                          powerValueUnit(
+                                                                  it.details)
+                                                              .value,
+                                                          style: textCon,
+                                                        ),
+                                                        const SizedBox(
+                                                          width: 2,
+                                                        ),
+                                                        Text(
+                                                          powerValueUnit(
+                                                                  it.details)
+                                                              .unit,
+                                                          style: TextStyle(
+                                                            fontSize: 12,
+                                                            color: HexColor(
+                                                                '#133F72'),
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
                                             ),
-                                          ),
-                                        ],
+                                          ],
+                                        ),
                                       ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),
