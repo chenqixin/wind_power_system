@@ -327,37 +327,74 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _loadItems() async {
-    recordRequestLog(type: 'Load Items Start');
-    final devs = await AppDatabase.allDevices();
-    final list = <WindItem>[];
-    for (final d in devs) {
-      final sn = (d['sn'] as String?) ?? '';
-      final ip = (d['ip'] as String?) ?? '';
-      final port = (d['port'] as int?) ?? 0;
-      final deviceSn = (d['deviceSn'] as String?) ?? sn;
-      final detail = await getSNDetail(sn, ip, port);
-      if (detail != null) {
-        try {
-          await AppDatabase.insertRealtimeData(
-            sn: sn,
-            ts: DateTime.now(),
-            data: detail,
-          );
-        } catch (_) {}
+    try {
+      recordRequestLog(type: 'Load Items Start');
+      final devs = await AppDatabase.allDevices();
+      final list = <WindItem>[];
+      for (final d in devs) {
+        final sn = (d['sn'] as String?) ?? '';
+        final ip = (d['ip'] as String?) ?? '';
+        final port = (d['port'] as int?) ?? 0;
+        final deviceSn = (d['deviceSn'] as String?) ?? sn;
+
+        // 1. 先尝试从数据库获取最新的缓存数据
+        model.DeviceDetailData? detail;
+        final history = await AppDatabase.latestHistoryForSn(sn);
+        if (history != null && history['payload'] is String) {
+          try {
+            final jsonMap = json.decode(history['payload'] as String);
+            detail = model.DeviceDetailData.fromJson(jsonMap);
+          } catch (_) {}
+        }
+
+        list.add(WindItem(
+          sn,
+          deviceSn,
+          ip,
+          port,
+          detail,
+        ));
       }
-      list.add(WindItem(
-        sn,
-        deviceSn,
-        ip,
-        port,
-        detail,
-      ));
+
+      // 2. 先把缓存数据（或者空详情的设备列表）显示出来
+      if (mounted) {
+        setState(() {
+          items = list;
+        });
+      }
+
+      // 3. 异步并行请求实时数据，不阻塞主流程
+      for (final it in list) {
+        getSNDetail(it.sn, it.ip, it.port).then((newDetail) {
+          if (newDetail != null && mounted) {
+            setState(() {
+              final idx = items.indexWhere((element) => element.sn == it.sn);
+              if (idx != -1) {
+                items[idx] = WindItem(
+                  it.sn,
+                  it.deviceSn,
+                  it.ip,
+                  it.port,
+                  newDetail,
+                );
+              }
+            });
+            // 保存到数据库
+            AppDatabase.insertRealtimeData(
+              sn: it.sn,
+              ts: DateTime.now(),
+              data: newDetail,
+            ).catchError((_) {});
+          }
+        });
+      }
+
+      recordRequestLog(
+          type: 'Load Items Initialized',
+          extra: 'Loaded ${list.length} devices with cache');
+    } catch (e) {
+      print("加载设备列表出错: $e");
     }
-    setState(() {
-      items = list;
-    });
-    recordRequestLog(
-        type: 'Load Items End', extra: 'Loaded ${list.length} devices');
   }
 
   void _pollDevices() {
