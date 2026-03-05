@@ -14,6 +14,7 @@ import 'package:flutter/material.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:wind_power_system/view/notice_dialog.dart';
 import 'package:wind_power_system/core/config/tcp_config.dart';
+import 'package:wind_power_system/core/utils/print_utils.dart';
 
 class WebSocketManager {
   static final WebSocketManager _instance = WebSocketManager._internal();
@@ -92,6 +93,7 @@ class WebSocketManager {
     conn.reconnectTimer?.cancel();
     conn.connecting = true;
     print("TCP connecting: $host:$port");
+    recordRequestLog(type: 'TCP Connect', ip: host, port: port);
     final t = timeout ?? const Duration(seconds: 5);
 
     try {
@@ -104,11 +106,18 @@ class WebSocketManager {
       final local = "${socket.address.address}:${socket.port}";
       final remote = "${socket.remoteAddress.address}:${socket.remotePort}";
       print("TCP 已连接 $local -> $remote");
+      recordRequestLog(
+          type: 'TCP Connected',
+          ip: host,
+          port: port,
+          extra: 'Local: $local, Remote: $remote');
 
       conn.sub = socket.listen(
         (data) {
           final chunk = _bytesToPrintable(data);
           print("TCP [$key] 收到: $chunk");
+          recordRequestLog(
+              type: 'TCP Receive', ip: host, port: port, extra: chunk.trim());
           conn!.buffer += chunk;
           while (true) {
             final idx = conn.buffer.indexOf('\n');
@@ -120,6 +129,8 @@ class WebSocketManager {
         },
         onError: (e) {
           print("TCP [$key] error: $e");
+          recordRequestLog(
+              type: 'TCP Error', ip: host, port: port, extra: e.toString());
           conn!.connected = false;
           conn.connecting = false;
           if (!_manuallyClosed) _reconnectTcp(host, port, t);
@@ -134,6 +145,11 @@ class WebSocketManager {
       );
     } catch (e) {
       print("TCP [$key] connect exception: $e");
+      recordRequestLog(
+          type: 'TCP Connect Exception',
+          ip: host,
+          port: port,
+          extra: e.toString());
       conn.connected = false;
       conn.connecting = false;
       if (!_manuallyClosed) _reconnectTcp(host, port, t);
@@ -284,6 +300,8 @@ class WebSocketManager {
     }
 
     if (conn != null && conn.connected && conn.socket != null) {
+      recordRequestLog(
+          type: 'TCP Send', ip: conn.host, port: conn.port, extra: line);
       conn.socket!.add(utf8.encode("$line\n"));
     }
   }

@@ -5,6 +5,7 @@ import 'package:wind_power_system/network/socket/web_socket_manager.dart';
 import 'package:wind_power_system/core/config/tcp_config.dart';
 import 'package:wind_power_system/view/notice_dialog.dart';
 import 'package:wind_power_system/db/app_database.dart';
+import 'package:wind_power_system/core/utils/print_utils.dart';
 
 class Api {
   static AIHttpRequest httpRequest = AIHttpRequest();
@@ -48,6 +49,7 @@ class Api {
     required String ip,
     required int port,
   }) async {
+    recordRequestLog(type: 'Polling', sn: sn, ip: ip, port: port);
     await WebSocketManager()
         .connectTcp(ip, port, timeout: const Duration(seconds: 5));
   }
@@ -57,6 +59,7 @@ class Api {
     required String ip,
     required int port,
   }) async {
+    recordRequestLog(type: 'Detail Request', sn: sn, ip: ip, port: port);
     await WebSocketManager()
         .connectTcp(ip, port, timeout: const Duration(seconds: 5));
     WebSocketManager().sendLine("detail sn=$sn");
@@ -69,6 +72,7 @@ class Api {
     required Function(dynamic data) successCallback,
     Function(int code, String? msg)? failCallback,
   }) async {
+    recordRequestLog(type: 'Get Detail', sn: sn, ip: ip, port: port);
     final mgr = WebSocketManager();
     await mgr.connectTcp(ip, port, timeout: const Duration(seconds: 5));
     final completer = Completer<void>();
@@ -84,6 +88,12 @@ class Api {
             final code =
                 rawCode is int ? rawCode : int.tryParse('$rawCode') ?? 0;
             final msg = obj['message'] ?? obj['messge'];
+            recordRequestLog(
+                type: 'Detail Response',
+                sn: sn,
+                ip: ip,
+                port: port,
+                extra: 'Code: $code, Msg: $msg');
             if (code == 200) {
               successCallback.call(obj['data']);
             } else {
@@ -108,6 +118,7 @@ class Api {
     required String ip,
     required int port,
   }) async {
+    recordRequestLog(type: 'Emergency Stop', sn: sn, ip: ip, port: port);
     final mgr = WebSocketManager();
     await mgr.connectTcp(ip, port, timeout: const Duration(seconds: 5));
     final completer = Completer<void>();
@@ -123,6 +134,12 @@ class Api {
             final code =
                 rawCode is int ? rawCode : int.tryParse('$rawCode') ?? 0;
             final msg = obj['message'] ?? obj['messge'];
+            recordRequestLog(
+                type: 'Stop Response',
+                sn: sn,
+                ip: ip,
+                port: port,
+                extra: 'Code: $code, Msg: $msg');
             if (code == 200) {
               AppNotice.show(title: '提示', content: '操作成功');
             } else {
@@ -146,6 +163,7 @@ class Api {
     required String ip,
     required int port,
   }) async {
+    recordRequestLog(type: 'Reset', sn: sn, ip: ip, port: port);
     final mgr = WebSocketManager();
     await mgr.connectTcp(ip, port, timeout: const Duration(seconds: 5));
     final completer = Completer<void>();
@@ -161,6 +179,12 @@ class Api {
             final code =
                 rawCode is int ? rawCode : int.tryParse('$rawCode') ?? 0;
             final msg = obj['message'] ?? obj['messge'];
+            recordRequestLog(
+                type: 'Reset Response',
+                sn: sn,
+                ip: ip,
+                port: port,
+                extra: 'Code: $code, Msg: $msg');
             if (code == 200) {
               AppNotice.show(title: '提示', content: '操作成功');
               try {
@@ -191,6 +215,15 @@ class Api {
     int? hotTime,
     num? iSet,
   }) async {
+    final op = heatingOn ? '1' : '0';
+    final ht = hotTime ?? 0;
+    final iset = iSet ?? 0;
+    recordRequestLog(
+        type: 'Manual Heating',
+        sn: sn,
+        ip: ip,
+        port: port,
+        extra: 'heatingOn=$op, hotTime=$ht, iSet=$iset');
     final mgr = WebSocketManager();
     await mgr.connectTcp(ip, port, timeout: const Duration(seconds: 5));
     final completer = Completer<void>();
@@ -206,6 +239,12 @@ class Api {
             final code =
                 rawCode is int ? rawCode : int.tryParse('$rawCode') ?? 0;
             final msg = obj['message'] ?? obj['messge'];
+            recordRequestLog(
+                type: 'Heating Response',
+                sn: sn,
+                ip: ip,
+                port: port,
+                extra: 'Code: $code, Msg: $msg');
             if (code == 200) {
               AppNotice.show(title: '提示', content: '操作成功');
             } else {
@@ -220,9 +259,6 @@ class Api {
         }
       } catch (_) {}
     });
-    final op = heatingOn ? '1' : '0';
-    final ht = hotTime ?? 0;
-    final iset = iSet ?? 0;
     mgr.sendLine("hot sn=$sn heatingOn=$op hotTime=$ht iSet=$iset");
     print("请求 hot sn=$sn heatingOn=$op hotTime=$ht iSet=$iset");
     await completer.future;
@@ -248,6 +284,12 @@ class Api {
       if (ip.isEmpty || port == 0) continue;
 
       try {
+        recordRequestLog(
+            type: 'Sync Clock',
+            sn: sn,
+            ip: ip,
+            port: port,
+            extra: 'Time: $y-$m-$d $h:$min:$s');
         await mgr.connectTcp(ip, port, timeout: const Duration(seconds: 3));
         mgr.sendLine(
             "clock  year=$y month=$m day=$d hour=$h minute=$min second=$s");
@@ -256,6 +298,12 @@ class Api {
         await Future.delayed(const Duration(milliseconds: 200));
       } catch (e) {
         print("同步设备 $sn 时间失败: $e");
+        recordRequestLog(
+            type: 'Sync Clock Failed',
+            sn: sn,
+            ip: ip,
+            port: port,
+            extra: 'Error: $e');
       }
     }
   }
