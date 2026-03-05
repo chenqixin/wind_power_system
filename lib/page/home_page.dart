@@ -84,7 +84,7 @@ class _HomePageState extends State<HomePage> {
     final s = it.details?.state;
     final ice = (s?.iceState ?? 0) == 1;
     final hot = (s?.hotState1 ?? 0) == 1;
-    return (ice || hot) ? '警告' : '电网限功率运行';
+    return (ice || hot) ? '警告' : '正常运行';
   }
 
   String _statusImg(WindItem it) {
