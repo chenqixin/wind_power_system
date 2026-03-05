@@ -28,7 +28,7 @@ class _ContentNavigatorState extends State<ContentNavigator> {
   Widget build(BuildContext context) {
     return Navigator(
       key: ContentNavigator.navigatorKey,
-      initialRoute: '/history',
+      initialRoute: '/home',
       onGenerateRoute: (settings) {
         switch (settings.name) {
           case '/home':
