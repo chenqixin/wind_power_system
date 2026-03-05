@@ -317,14 +317,17 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    //_loadItems();
     _loadItems().then((_) {
       _listenSnError();
       _syncClockOnce();
     });
+    _pollTimer = Timer.periodic(const Duration(seconds: 20), (timer) {
+      _loadItems();
+    });
   }
 
   Future<void> _loadItems() async {
+    recordRequestLog(type: 'Load Items Start');
     final devs = await AppDatabase.allDevices();
     final list = <WindItem>[];
     for (final d in devs) {
@@ -353,6 +356,8 @@ class _HomePageState extends State<HomePage> {
     setState(() {
       items = list;
     });
+    recordRequestLog(
+        type: 'Load Items End', extra: 'Loaded ${list.length} devices');
   }
 
   void _pollDevices() {
