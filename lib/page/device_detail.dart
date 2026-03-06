@@ -236,6 +236,7 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
                                   ? 'ic_jr.png'.imagePath
                                   : 'ic_jr_kai.png'.imagePath;
                             })(), width: 12, height: 12),
+                            //Image.asset('ic_jr.png'.imagePath, width: 12, height: 12),
                             const SizedBox(width: 8),
                             Text('加热状态').simpleStyle(14, HexColor('#051F34')),
                           ]),
