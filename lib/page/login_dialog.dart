@@ -7,7 +7,6 @@ import 'package:wind_power_system/genernal/extension/text.dart';
 import 'package:wind_power_system/view/notice_dialog.dart';
 import 'package:wind_power_system/db/app_database.dart';
 import 'package:wind_power_system/core/utils/secure_storage.dart';
-import 'package:wind_power_system/core/utils/print_utils.dart';
 
 class LoginDialog extends StatefulWidget {
   const LoginDialog({super.key});
@@ -147,7 +146,6 @@ class _LoginDialogState extends State<LoginDialog> {
   void _onConfirm() async {
     final username = _usernameController.text.trim();
     final password = _passwordController.text.trim();
-    recordLogs("User attempting login: $username", level: LogLevel.info);
     if (username.isEmpty) {
       AppNotice.show(title: '提示', content: '请输入用户名');
       return;
@@ -159,7 +157,6 @@ class _LoginDialogState extends State<LoginDialog> {
     await AppDatabase.ensureUserTable();
     final user = await AppDatabase.userByCredentials(username, password);
     if (user == null) {
-      recordLogs("Login failed for user: $username", level: LogLevel.warning);
       AppNotice.show(title: '提示', content: '用户名或密码错误');
       return;
     }
@@ -175,8 +172,6 @@ class _LoginDialogState extends State<LoginDialog> {
     UserInfo.password = password;
     UserInfo.role = role;
 
-    recordLogs("Login successful for user: $username, role: $role",
-        level: LogLevel.info);
     AppNotice.show(title: '提示', content: '登录成功');
     Future.delayed(const Duration(seconds: 3), () {
       if (!mounted) return;
@@ -217,7 +212,7 @@ class _LoginDialogState extends State<LoginDialog> {
         hintStyle: hintStyle,
         isDense: true,
         contentPadding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 18),
+        const EdgeInsets.symmetric(horizontal: 12, vertical: 18),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(6)),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(6),
@@ -248,7 +243,7 @@ class _LoginDialogState extends State<LoginDialog> {
         hintStyle: hintStyle,
         isDense: true,
         contentPadding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 18),
+        const EdgeInsets.symmetric(horizontal: 12, vertical: 18),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(6)),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(6),

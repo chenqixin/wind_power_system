@@ -6,7 +6,6 @@ import 'package:wind_power_system/core/constant/app_constant.dart';
 import 'package:wind_power_system/genernal/extension/text.dart';
 import 'package:wind_power_system/view/notice_dialog.dart';
 import 'package:wind_power_system/db/app_database.dart';
-import 'package:wind_power_system/core/utils/print_utils.dart';
 
 class AddSnDialog extends StatefulWidget {
   const AddSnDialog({super.key});
@@ -177,10 +176,6 @@ class _AddSnDialogState extends State<AddSnDialog> {
     final portText = _portController.text.trim();
     final deviceSn = _deviceSnController.text.trim();
 
-    recordLogs(
-        "Attempting to add device: IP=$ip, TurbineNo=$turbineNo, Port=$portText, DeviceSn=$deviceSn",
-        level: LogLevel.info);
-
     if (ip.isEmpty) {
       AppNotice.show(title: '提示', content: '请输入风机IP地址');
       return;
@@ -205,21 +200,24 @@ class _AddSnDialogState extends State<AddSnDialog> {
     }
 
     try {
-      final db = await AppDatabase.instance();
-      await db.insert('devices', {
-        'turbineNo': turbineNo,
-        'ip': ip,
-        'port': port,
-        'deviceSn': deviceSn,
-      });
-      recordLogs("Device added successfully: IP=$ip, TurbineNo=$turbineNo",
-          level: LogLevel.info);
-      AppNotice.show(title: '提示', content: '添加成功');
-      Navigator.of(context).pop(true);
+      await AppDatabase.insertDevice(
+        sn: turbineNo,
+        ip: ip,
+        port: port,
+        deviceSn: deviceSn,
+      );
     } catch (e) {
-      recordLogs("Failed to add device: $e", level: LogLevel.error);
-      AppNotice.show(title: '提示', content: '添加失败：$e');
+      AppNotice.show(title: '提示', content: '该风机编号已存在');
+      return;
     }
+
+    Navigator.of(context).pop(<String, dynamic>{
+      'ip': ip,
+      'turbineNo': turbineNo,
+      'port': port,
+      'deviceSn': deviceSn,
+    });
+    AppNotice.show(title: '提示', content: '新增成功');
   }
 
   Widget _formGroup({
@@ -256,7 +254,7 @@ class _AddSnDialogState extends State<AddSnDialog> {
         hintStyle: hintStyle,
         isDense: true,
         contentPadding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 18),
+        const EdgeInsets.symmetric(horizontal: 12, vertical: 18),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(6)),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(6),

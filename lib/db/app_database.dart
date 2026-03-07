@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
-import 'package:wind_power_system/core/utils/print_utils.dart';
 import 'table/divices_tab.dart';
 import 'table/sensor_history_data.dart';
 import 'table/users_table.dart';
@@ -18,57 +17,38 @@ class AppDatabase {
   /// 返回已打开的 `Database` 实例
   static Future<Database> instance() async {
     if (_db != null) return _db!;
-    try {
-      sqfliteFfiInit();
-      databaseFactory = databaseFactoryFfi;
-      final Directory dir = Platform.isWindows
-          ? Directory('C:/Users/${Platform.environment['USERNAME']}/Documents')
-          : await getApplicationDocumentsDirectory();
-      final path = p.join(dir.path, 'window_app.db');
-      recordLogs("Opening database at $path", level: LogLevel.info);
-      _db = await databaseFactory.openDatabase(path);
-      await _ensureDeviceTable();
-      await ensureUserTable();
-      recordLogs("Database initialized successfully", level: LogLevel.info);
-      return _db!;
-    } catch (e, s) {
-      recordLogs("Database initialization failed: $e\nStack: $s",
-          level: LogLevel.error);
-      rethrow;
-    }
+    sqfliteFfiInit();
+    databaseFactory = databaseFactoryFfi;
+    final Directory dir = Platform.isWindows
+        ? Directory('C:/Users/${Platform.environment['USERNAME']}/Documents')
+        : await getApplicationDocumentsDirectory();
+    final path = p.join(dir.path, 'window_app.db');
+    _db = await databaseFactory.openDatabase(path);
+    await _ensureDeviceTable();
+    await ensureUserTable();
+    return _db!;
   }
 
   /// 确保设备表 `devices` 存在，并按需迁移缺失列
   static Future<void> _ensureDeviceTable() async {
-    try {
-      final db = await instance();
-      final res = await db.rawQuery(
-          "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
-          ['devices']);
-      if (res.isEmpty) {
-        recordLogs("Creating table: devices", level: LogLevel.info);
-        await db.execute(devicesCreateSql('devices'));
-      }
-      // migrate columns if missing
-      final info = await db.rawQuery('PRAGMA table_info(devices)');
-      final cols = info.map((e) => e['name'] as String).toSet();
-      if (!cols.contains('ip')) {
-        recordLogs("Migrating devices table: adding column ip",
-            level: LogLevel.info);
-        await db.execute('ALTER TABLE devices ADD COLUMN ip TEXT');
-      }
-      if (!cols.contains('port')) {
-        recordLogs("Migrating devices table: adding column port",
-            level: LogLevel.info);
-        await db.execute('ALTER TABLE devices ADD COLUMN port INTEGER');
-      }
-      if (!cols.contains('deviceSn')) {
-        recordLogs("Migrating devices table: adding column deviceSn",
-            level: LogLevel.info);
-        await db.execute('ALTER TABLE devices ADD COLUMN deviceSn TEXT');
-      }
-    } catch (e) {
-      recordLogs("Error in _ensureDeviceTable: $e", level: LogLevel.error);
+    final db = await instance();
+    final res = await db.rawQuery(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
+        ['devices']);
+    if (res.isEmpty) {
+      await db.execute(devicesCreateSql('devices'));
+    }
+    // migrate columns if missing
+    final info = await db.rawQuery('PRAGMA table_info(devices)');
+    final cols = info.map((e) => e['name'] as String).toSet();
+    if (!cols.contains('ip')) {
+      await db.execute('ALTER TABLE devices ADD COLUMN ip TEXT');
+    }
+    if (!cols.contains('port')) {
+      await db.execute('ALTER TABLE devices ADD COLUMN port INTEGER');
+    }
+    if (!cols.contains('deviceSn')) {
+      await db.execute('ALTER TABLE devices ADD COLUMN deviceSn TEXT');
     }
   }
 
@@ -491,7 +471,7 @@ class AppDatabase {
     await ensureMonthTable(year, month);
     final table = monthTableName(year, month);
     final res =
-        await db.rawQuery('SELECT MAX(recordTime) AS maxTs FROM ' + table);
+    await db.rawQuery('SELECT MAX(recordTime) AS maxTs FROM ' + table);
     final maxTs = res.isNotEmpty ? res.first['maxTs'] as int? : null;
     if (maxTs != null) {
       return DateTime.fromMillisecondsSinceEpoch(maxTs)
@@ -520,7 +500,7 @@ class AppDatabase {
     );
     if (curRows.isNotEmpty) return curRows.first;
     final prevMonth =
-        DateTime(now.year, now.month, 1).subtract(const Duration(days: 1));
+    DateTime(now.year, now.month, 1).subtract(const Duration(days: 1));
     await ensureMonthTable(prevMonth.year, prevMonth.month);
     final prev = monthTableName(prevMonth.year, prevMonth.month);
     final prevRows = await db.query(
@@ -672,7 +652,7 @@ class AppDatabase {
     }
     // 跨月合并后重新按时间排序
     allResults.sort(
-        (a, b) => (a['recordTime'] as int).compareTo(b['recordTime'] as int));
+            (a, b) => (a['recordTime'] as int).compareTo(b['recordTime'] as int));
     return allResults;
   }
 }
