@@ -62,20 +62,31 @@ class NoticeDialog extends StatelessWidget {
 }
 
 class AppNotice {
+  static bool _isShowing = false;
+
   static Future<void> show({
     required String title,
     required String content,
     Duration duration = const Duration(seconds: 1),
   }) async {
+    if (_isShowing) return;
+    _isShowing = true;
+
     final ctx = AppConstant.shared.context;
-    final nav = Navigator.of(ctx, rootNavigator: true);
+
     showDialog(
       context: ctx,
       barrierDismissible: true,
       useRootNavigator: true,
       builder: (_) => NoticeDialog(title: title, content: content),
-    );
+    ).then((_) {
+      _isShowing = false;
+    });
+
     await Future.delayed(duration);
-    nav.maybePop();
+    if (_isShowing) {
+      final nav = Navigator.of(ctx, rootNavigator: true);
+      nav.maybePop();
+    }
   }
 }

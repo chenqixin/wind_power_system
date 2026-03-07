@@ -1,10 +1,27 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:wind_power_system/core/utils/print_utils.dart';
 import 'package:wind_power_system/page/main_shell_page.dart';
 import 'package:window_manager/window_manager.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // 记录应用启动日志
+  recordLogs("App started", level: LogLevel.info);
+
+  // 捕获 Flutter 框架抛出的错误
+  FlutterError.onError = (FlutterErrorDetails details) {
+    recordLogs("Flutter Framework Error: ${details.exceptionAsString()}\nStack: ${details.stack}", level: LogLevel.error);
+    FlutterError.presentError(details);
+  };
+
+  // 捕获异步任务中的错误
+  PlatformDispatcher.instance.onError = (Object error, StackTrace stack) {
+    recordLogs("Asynchronous Error: ${error.toString()}\nStack: $stack", level: LogLevel.error);
+    return true;
+  };
 
   // 初始化 window_manager
   await windowManager.ensureInitialized();

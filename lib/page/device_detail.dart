@@ -34,6 +34,8 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
   final TextEditingController _fzController = TextEditingController();
   double _heatingMinutes = 10;
   bool _heatingMinutesInitialized = false;
+  bool _heatingOn = false;
+  bool _heatingOnInitialized = false;
   bool _iSetInitialized = false;
   model.DeviceDetailData? detail;
   String? _ip;
@@ -95,6 +97,11 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
             final time = (d.state?.hotTime ?? 0).toDouble();
             _heatingMinutes = ctrl ? time : 0.0;
             _heatingMinutesInitialized = true;
+          }
+          if (!_heatingOnInitialized) {
+            _heatingOn = ((d.state?.ctrlMode ?? 0) == 1) &&
+                ((d.state?.hotState4 ?? 0) == 1);
+            _heatingOnInitialized = true;
           }
           if (!_iSetInitialized) {
             _fzController.text = (d.state?.iSet)?.toString() ?? '';
@@ -936,44 +943,48 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
                                         14, AppColors.blue133,
                                         isBold: true),
                                     const SizedBox(width: 18),
-                                    Row(
-                                      children: [
-                                        Image.asset(
-                                            (((detail?.state?.ctrlMode ?? 0) ==
-                                                            1) &&
-                                                        ((detail?.state
-                                                                    ?.hotState4 ??
-                                                                0) ==
-                                                            1)
-                                                    ? 'ic_jr_kai.png'
-                                                    : 'ic_jr_guan.png')
-                                                .imagePath,
-                                            width: 12,
-                                            height: 12),
-                                        SizedBox(width: 2),
-                                        Text('开').simpleStyle(
-                                            12, HexColor('#051F34')),
-                                      ],
+                                    InkWell(
+                                      onTap: () {
+                                        setState(() {
+                                          _heatingOn = true;
+                                        });
+                                      },
+                                      child: Row(
+                                        children: [
+                                          Image.asset(
+                                              (_heatingOn
+                                                      ? 'ic_jr_kai.png'
+                                                      : 'ic_jr_guan.png')
+                                                  .imagePath,
+                                              width: 12,
+                                              height: 12),
+                                          SizedBox(width: 2),
+                                          Text('开').simpleStyle(
+                                              12, HexColor('#051F34')),
+                                        ],
+                                      ),
                                     ),
                                     SizedBox(width: 12),
-                                    Row(
-                                      children: [
-                                        Image.asset(
-                                            (((detail?.state?.ctrlMode ?? 0) ==
-                                                            1) &&
-                                                        ((detail?.state
-                                                                    ?.hotState4 ??
-                                                                0) ==
-                                                            1)
-                                                    ? 'ic_jr_guan.png'
-                                                    : 'ic_jr_kai.png')
-                                                .imagePath,
-                                            width: 12,
-                                            height: 12),
-                                        SizedBox(width: 2),
-                                        Text('关').simpleStyle(
-                                            12, HexColor('#051F34')),
-                                      ],
+                                    InkWell(
+                                      onTap: () {
+                                        setState(() {
+                                          _heatingOn = false;
+                                        });
+                                      },
+                                      child: Row(
+                                        children: [
+                                          Image.asset(
+                                              (_heatingOn
+                                                      ? 'ic_jr_guan.png'
+                                                      : 'ic_jr_kai.png')
+                                                  .imagePath,
+                                              width: 12,
+                                              height: 12),
+                                          SizedBox(width: 2),
+                                          Text('关').simpleStyle(
+                                              12, HexColor('#051F34')),
+                                        ],
+                                      ),
                                     ),
                                   ]),
                               Spacer(),
@@ -1066,10 +1077,7 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
                                 const SizedBox(width: 22),
                                 InkWell(
                                   onTap: () async {
-                                    final heatingOn =
-                                        ((detail?.state?.ctrlMode ?? 0) == 1) &&
-                                            ((detail?.state?.hotState4 ?? 0) ==
-                                                1);
+                                    final heatingOn = _heatingOn;
                                     final hotTime = _heatingMinutes.round();
                                     final text = _fzController.text.trim();
                                     final iSet = text.isEmpty

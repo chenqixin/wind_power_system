@@ -52,14 +52,27 @@ abstract class BaseHttpRequest {
           : await getDio().request(path,
               queryParameters: params ?? <String, dynamic>{},
               options: Options(method: m, headers: await configHeaders(params)));
+      
+      recordRequestLog(
+        type: '$m Request',
+        ip: getBaseUrl(),
+        extra: 'Path: $path, Params: $params, Data: $data',
+      );
+
       cjPrint("$m ${getBaseUrl()}$path params: $params");
       cjPrint("状态数据:statusCode=${response.statusCode},statusMessage=${response.statusMessage}");
+      
       if (response.statusCode == 200) {
         cjPrint("data:${response.data}");
         if (response.data is Map<String, dynamic>) {
           BaseResponse baseResponse = getBaseResponse(response.data);
-          cjPrint(
-              "请求结果:code=${baseResponse.getResponseCode()},msg=${baseResponse.getResponseMsg()},data=${baseResponse.getResponseData()}");
+          String resultLog = "code=${baseResponse.getResponseCode()},msg=${baseResponse.getResponseMsg()},data=${baseResponse.getResponseData()}";
+          cjPrint("请求结果:$resultLog");
+          recordRequestLog(
+            type: '$m Response Success',
+            ip: getBaseUrl(),
+            extra: 'Path: $path, Result: $resultLog',
+          );
           if (baseResponse.getResponseCode() == getSuccessCode()) {
             successCallback.call(baseResponse.getResponseData());
           } else {
@@ -68,12 +81,21 @@ abstract class BaseHttpRequest {
                 baseResponse.getResponseCode(), baseResponse.getResponseMsg(), toastErrorMsg);
           }
         } else {
+          recordRequestLog(
+            type: '$m Response Success (Raw)',
+            ip: getBaseUrl(),
+            extra: 'Path: $path, Data: ${response.data}',
+          );
           successCallback.call(response.data);
         }
       } else {
         // HTTP status code
         var httpStatusCode = response.statusCode ?? error404;
-        // var msg = "${S.of(AppRoute.currentContext!).ServerRequestFailed}($httpStatusCode)";
+        recordRequestLog(
+          type: '$m Response Error',
+          ip: getBaseUrl(),
+          extra: 'Path: $path, Status: $httpStatusCode, Msg: ${response.statusMessage}',
+        );
         failCallback?.call(httpStatusCode, "");
         failWithResponseCode(httpStatusCode, "", toastErrorMsg);
       }
@@ -82,9 +104,14 @@ abstract class BaseHttpRequest {
       // DioException
       cjPrint("异常请求：$m ${getBaseUrl()}$path params: $params");
       cjPrint("捕获到异常：${error.toString()},报错堆栈：$s");
-      DateFormat dateFormat = DateFormat("yyyy-MM-dd HH:mm:ss");
-      String date = dateFormat.format(DateTime.now());
-      writeToFile("error_log.txt", "$date\n捕获到异常：${error.toString()}\n,报错堆栈：$s \n\n\n");
+      
+      recordLogs("Network Request Exception: $m ${getBaseUrl()}$path\nError: $error\nStack: $s", level: LogLevel.error);
+      recordRequestLog(
+        type: '$m Request Exception',
+        ip: getBaseUrl(),
+        extra: 'Path: $path, Error: $error',
+      );
+      
       var msg = error.toString();
       // if (error is DioException) {
       //   msg = S.of(AppRoute.currentContext!).NetworkAnomaly;

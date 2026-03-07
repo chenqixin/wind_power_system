@@ -44,7 +44,8 @@ class WebSocketManager {
 
   void connect(String url) {
     _manuallyClosed = false;
-    print("WS connecting: $url");
+    recordLogs("WS connecting: $url", level: LogLevel.info);
+    recordRequestLog(type: 'WS Connect', ip: url);
 
     try {
       _channel = WebSocketChannel.connect(Uri.parse(url));
@@ -52,16 +53,19 @@ class WebSocketManager {
       _channel!.stream.listen(
         (data) {
           _connected = true;
-          print("WS 收到: $data");
+          cjPrint("WS 收到: $data");
+          recordRequestLog(type: 'WS Receive', ip: url, extra: data.toString());
           _msgStream.add(data);
         },
         onError: (e) {
-          print("WS error: $e");
+          recordLogs("WS error: $e", level: LogLevel.error);
+          recordRequestLog(type: 'WS Error', ip: url, extra: e.toString());
           _connected = false;
           if (!_manuallyClosed) _reconnect(url);
         },
         onDone: () {
-          print("WS closed");
+          recordLogs("WS closed", level: LogLevel.warning);
+          recordRequestLog(type: 'WS Closed', ip: url);
           _connected = false;
           if (!_manuallyClosed) _reconnect(url);
         },
@@ -69,7 +73,9 @@ class WebSocketManager {
 
       _startHeartBeat();
     } catch (e) {
-      print("WS connect exception: $e");
+      recordLogs("WS connect exception: $e", level: LogLevel.error);
+      recordRequestLog(
+          type: 'WS Connect Exception', ip: url, extra: e.toString());
       _connected = false;
       if (!_manuallyClosed) _reconnect(url);
     }
@@ -92,7 +98,7 @@ class WebSocketManager {
 
     conn.reconnectTimer?.cancel();
     conn.connecting = true;
-    print("TCP connecting: $host:$port");
+    recordLogs("TCP connecting: $host:$port", level: LogLevel.info);
     recordRequestLog(type: 'TCP Connect', ip: host, port: port);
     final t = timeout ?? const Duration(seconds: 5);
 
@@ -105,7 +111,7 @@ class WebSocketManager {
 
       final local = "${socket.address.address}:${socket.port}";
       final remote = "${socket.remoteAddress.address}:${socket.remotePort}";
-      print("TCP 已连接 $local -> $remote");
+      recordLogs("TCP Connected $local -> $remote", level: LogLevel.info);
       recordRequestLog(
           type: 'TCP Connected',
           ip: host,
@@ -115,7 +121,7 @@ class WebSocketManager {
       conn.sub = socket.listen(
         (data) {
           final chunk = _bytesToPrintable(data);
-          print("TCP [$key] 收到: $chunk");
+          cjPrint("TCP [$key] 收到: $chunk");
           recordRequestLog(
               type: 'TCP Receive', ip: host, port: port, extra: chunk.trim());
           conn!.buffer += chunk;
@@ -128,7 +134,7 @@ class WebSocketManager {
           }
         },
         onError: (e) {
-          print("TCP [$key] error: $e");
+          recordLogs("TCP [$key] error: $e", level: LogLevel.error);
           recordRequestLog(
               type: 'TCP Error', ip: host, port: port, extra: e.toString());
           conn!.connected = false;
@@ -136,7 +142,8 @@ class WebSocketManager {
           if (!_manuallyClosed) _reconnectTcp(host, port, t);
         },
         onDone: () {
-          print("TCP [$key] closed");
+          recordLogs("TCP [$key] closed", level: LogLevel.warning);
+          recordRequestLog(type: 'TCP Closed', ip: host, port: port);
           conn!.connected = false;
           conn.connecting = false;
           if (!_manuallyClosed) _reconnectTcp(host, port, t);
@@ -144,7 +151,7 @@ class WebSocketManager {
         cancelOnError: true,
       );
     } catch (e) {
-      print("TCP [$key] connect exception: $e");
+      recordLogs("TCP [$key] connect exception: $e", level: LogLevel.error);
       recordRequestLog(
           type: 'TCP Connect Exception',
           ip: host,
