@@ -44,6 +44,10 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
   late AnimationController _blinkController;
   late Animation<double> _opacityAnim;
 
+  bool _isEmergencyStopPressed = false;
+  bool _isResetPressed = false;
+  bool _isConfirmPressed = false;
+
   //故障
   bool _faultOn(int index) {
     final f = detail?.fault;
@@ -231,23 +235,21 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
                           borderRadius: BorderRadius.circular(4),
                         ),
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 8),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8.0, vertical: 10.0),
-                          child: Row(children: [
-                            Image.asset((() {
-                              final s = detail?.state;
-                              final on = (s?.hotState4 ?? 0) == 1;
-                              return on
-                                  ? 'ic_jr.png'.imagePath
-                                  : 'ic_jr_kai.png'.imagePath;
-                            })(), width: 12, height: 12),
-                            //Image.asset('ic_jr.png'.imagePath, width: 12, height: 12),
-                            const SizedBox(width: 8),
-                            Text('加热状态').simpleStyle(14, HexColor('#051F34')),
-                          ]),
-                        )),
+                            horizontal: 12),
+                        child: Row(
+                            mainAxisAlignment: MainAxisAlignment.start,
+                            children: [
+                          Image.asset((() {
+                            final s = detail?.state;
+                            final on = (s?.hotState4 ?? 0) == 1;
+                            return on
+                                ? 'ic_jr.png'.imagePath
+                                : 'ic_jr_guan.png'.imagePath;
+                          })(), width: 12, height: 12),
+                          //Image.asset('ic_jr.png'.imagePath, width: 12, height: 12),
+                          const SizedBox(width: 8),
+                          Text('加热状态').simpleStyle(14, HexColor('#051F34')),
+                        ])),
                   ),
                   SizedBox(height: 8),
                   Expanded(
@@ -257,24 +259,20 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
                           borderRadius: BorderRadius.circular(4),
                         ),
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 8),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8.0, vertical: 10.0),
-                          child: Row(children: [
-                            Text('功率：').simpleStyle(14, HexColor('#051F34')),
-                            Spacer(),
-                            Text(bladePowerValueUnit(
-                                        detail?.winddata, index + 1)
-                                    .value)
-                                .simpleStyle(12, AppColors.blue06,
-                                    isBold: true),
-                            Text(bladePowerValueUnit(
-                                        detail?.winddata, index + 1)
-                                    .unit)
-                                .simpleStyle(12, AppColors.blue133),
-                          ]),
-                        )),
+                            horizontal: 12),
+                        child: Row(children: [
+                          Text('功率：').simpleStyle(14, HexColor('#051F34')),
+                          Spacer(),
+                          Text(bladePowerValueUnit(
+                              detail?.winddata, index + 1)
+                              .value)
+                              .simpleStyle(12, AppColors.blue06,
+                              isBold: true),
+                          Text(bladePowerValueUnit(
+                                      detail?.winddata, index + 1)
+                                  .unit)
+                              .simpleStyle(10, AppColors.blue133),
+                        ])),
                   ),
                 ],
               ),
@@ -818,7 +816,7 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
                                     crossAxisAlignment:
                                         CrossAxisAlignment.center,
                                     children: [
-                                      (((detail?.state?.iceState) ?? 0) == 1)
+                                      (((detail?.state?.hotState4) ?? 0) == 1)
                                           ? FadeTransition(
                                               opacity: _opacityAnim,
                                               child: Image.asset(
@@ -851,7 +849,16 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
                                                   width: 20,
                                                   height: 20),
                                               const SizedBox(height: 8),
-                                              InkWell(
+                                              GestureDetector(
+                                                onTapDown: (_) => setState(() =>
+                                                    _isEmergencyStopPressed =
+                                                        true),
+                                                onTapUp: (_) => setState(() =>
+                                                    _isEmergencyStopPressed =
+                                                        false),
+                                                onTapCancel: () => setState(() =>
+                                                    _isEmergencyStopPressed =
+                                                        false),
                                                 onTap: () async {
                                                   await Api.emergencyStopTcp(
                                                       sn: widget.sn,
@@ -859,11 +866,19 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
                                                       port: _port ?? 0);
                                                   //getSNDetail(widget.sn);
                                                 },
-                                                child: Container(
+                                                child: AnimatedContainer(
+                                                  duration: const Duration(
+                                                      milliseconds: 100),
                                                   width: 85,
                                                   height: 35,
                                                   decoration: BoxDecoration(
-                                                      color: AppColors.blue06,
+                                                      color:
+                                                          _isEmergencyStopPressed
+                                                              ? AppColors.blue06
+                                                                  .withOpacity(
+                                                                      0.6)
+                                                              : AppColors
+                                                                  .blue06,
                                                       borderRadius:
                                                           BorderRadius.circular(
                                                               6)),
@@ -887,18 +902,30 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
                                                   width: 20,
                                                   height: 20),
                                               const SizedBox(height: 8),
-                                              InkWell(
+                                              GestureDetector(
+                                                onTapDown: (_) => setState(() =>
+                                                    _isResetPressed = true),
+                                                onTapUp: (_) => setState(() =>
+                                                    _isResetPressed = false),
+                                                onTapCancel: () => setState(
+                                                    () => _isResetPressed =
+                                                        false),
                                                 onTap: () async {
                                                   await Api.resetTcp(
                                                       sn: widget.sn,
                                                       ip: _ip ?? '',
                                                       port: _port ?? 0);
                                                 },
-                                                child: Container(
+                                                child: AnimatedContainer(
+                                                  duration: const Duration(
+                                                      milliseconds: 100),
                                                   width: 85,
                                                   height: 35,
                                                   decoration: BoxDecoration(
-                                                      color: AppColors.blue06,
+                                                      color: _isResetPressed
+                                                          ? AppColors.blue06
+                                                              .withOpacity(0.6)
+                                                          : AppColors.blue06,
                                                       borderRadius:
                                                           BorderRadius.circular(
                                                               6)),
@@ -1075,7 +1102,13 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
                                   ),
                                 ),
                                 const SizedBox(width: 22),
-                                InkWell(
+                                GestureDetector(
+                                  onTapDown: (_) =>
+                                      setState(() => _isConfirmPressed = true),
+                                  onTapUp: (_) =>
+                                      setState(() => _isConfirmPressed = false),
+                                  onTapCancel: () =>
+                                      setState(() => _isConfirmPressed = false),
                                   onTap: () async {
                                     final heatingOn = _heatingOn;
                                     final hotTime = _heatingMinutes.round();
@@ -1089,11 +1122,14 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
                                       iSet: iSet,
                                     );
                                   },
-                                  child: Container(
+                                  child: AnimatedContainer(
+                                    duration: const Duration(milliseconds: 100),
                                     width: 85,
                                     height: 35,
                                     decoration: BoxDecoration(
-                                        color: AppColors.blue06,
+                                        color: _isConfirmPressed
+                                            ? AppColors.blue06.withOpacity(0.6)
+                                            : AppColors.blue06,
                                         borderRadius: BorderRadius.circular(6)),
                                     alignment: Alignment.center,
                                     child: Text('确认').simpleStyle(
