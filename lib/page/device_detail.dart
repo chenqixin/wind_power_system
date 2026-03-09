@@ -47,6 +47,8 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
   bool _isEmergencyStopPressed = false;
   bool _isResetPressed = false;
   bool _isConfirmPressed = false;
+  bool _isManualPressed = false;
+  bool _isAutoPressed = false;
 
   //故障
   bool _faultOn(int index) {
@@ -234,22 +236,21 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
                           color: AppColors.white,
                           borderRadius: BorderRadius.circular(4),
                         ),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12),
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
                         child: Row(
                             mainAxisAlignment: MainAxisAlignment.start,
                             children: [
-                          Image.asset((() {
-                            final s = detail?.state;
-                            final on = (s?.hotState4 ?? 0) == 1;
-                            return on
-                                ? 'ic_jr.png'.imagePath
-                                : 'ic_jr_guan.png'.imagePath;
-                          })(), width: 12, height: 12),
-                          //Image.asset('ic_jr.png'.imagePath, width: 12, height: 12),
-                          const SizedBox(width: 8),
-                          Text('加热状态').simpleStyle(14, HexColor('#051F34')),
-                        ])),
+                              Image.asset((() {
+                                final s = detail?.state;
+                                final on = (s?.hotState4 ?? 0) == 1;
+                                return on
+                                    ? 'ic_jr.png'.imagePath
+                                    : 'ic_jr_guan.png'.imagePath;
+                              })(), width: 12, height: 12),
+                              //Image.asset('ic_jr.png'.imagePath, width: 12, height: 12),
+                              const SizedBox(width: 8),
+                              Text('加热状态').simpleStyle(14, HexColor('#051F34')),
+                            ])),
                   ),
                   SizedBox(height: 8),
                   Expanded(
@@ -258,18 +259,14 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
                           color: HexColor('#C1D8F0'),
                           borderRadius: BorderRadius.circular(4),
                         ),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12),
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
                         child: Row(children: [
                           Text('功率：').simpleStyle(14, HexColor('#051F34')),
                           Spacer(),
-                          Text(bladePowerValueUnit(
-                              detail?.winddata, index + 1)
-                              .value)
-                              .simpleStyle(12, AppColors.blue06,
-                              isBold: true),
-                          Text(bladePowerValueUnit(
-                                      detail?.winddata, index + 1)
+                          Text(bladePowerValueUnit(detail?.winddata, index + 1)
+                                  .value)
+                              .simpleStyle(12, AppColors.blue06, isBold: true),
+                          Text(bladePowerValueUnit(detail?.winddata, index + 1)
                                   .unit)
                               .simpleStyle(10, AppColors.blue133),
                         ])),
@@ -738,7 +735,15 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _title('控制台'),
+                        Row(
+                          children: [
+                            _title('控制台'),
+                            SizedBox(width: 18),
+                            Text('设备编号：00009527')
+                                .simpleStyle(13, AppColors.blue133),
+                          ],
+                        ),
+                       
                         const SizedBox(height: 6),
                         Expanded(
                           child: Row(
@@ -747,8 +752,7 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text('设备编号：00009527')
-                                        .simpleStyle(13, AppColors.blue133),
+                                   
                                     SizedBox(height: 8),
                                     Expanded(
                                       child: Container(
@@ -761,7 +765,7 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
                                           mainAxisAlignment:
                                               MainAxisAlignment.center,
                                           children: [
-                                            Text('除冰状态').simpleStyle(
+                                            Text('除冰模式').simpleStyle(
                                                 14, AppColors.blue133,
                                                 isBold: true),
                                             const SizedBox(height: 20),
@@ -770,7 +774,7 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
                                                     MainAxisAlignment
                                                         .spaceEvenly,
                                                 children: [
-                                                  Row(
+                                                  Column(
                                                     children: [
                                                       Image.asset(
                                                           ((detail?.state?.ctrlMode ??
@@ -781,12 +785,62 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
                                                               .imagePath,
                                                           width: 20,
                                                           height: 20),
-                                                      SizedBox(width: 10),
-                                                      Text('手动').simpleStyle(14,
-                                                          HexColor('#051F34')),
+                                                      SizedBox(height: 8),
+                                                      GestureDetector(
+                                                        onTapDown: (_) =>
+                                                            setState(() =>
+                                                                _isManualPressed =
+                                                                    true),
+                                                        onTapUp: (_) =>
+                                                            setState(() =>
+                                                                _isManualPressed =
+                                                                    false),
+                                                        onTapCancel: () =>
+                                                            setState(() =>
+                                                                _isManualPressed =
+                                                                    false),
+                                                        onTap: () async {
+                                                          await Api
+                                                              .switchModeTcp(
+                                                                  sn: widget.sn,
+                                                                  ip: _ip ?? '',
+                                                                  port: _port ??
+                                                                      0,
+                                                                  mode: 1);
+                                                        },
+                                                        child:
+                                                            AnimatedContainer(
+                                                          duration:
+                                                              const Duration(
+                                                                  milliseconds:
+                                                                      100),
+                                                          width: 85,
+                                                          height: 35,
+                                                          decoration: BoxDecoration(
+                                                              color: _isManualPressed
+                                                                  ? AppColors
+                                                                      .blue06
+                                                                      .withOpacity(
+                                                                          0.6)
+                                                                  : AppColors
+                                                                      .blue06,
+                                                              borderRadius:
+                                                                  BorderRadius
+                                                                      .circular(
+                                                                          6)),
+                                                          alignment:
+                                                              Alignment.center,
+                                                          child: Text('手动')
+                                                              .simpleStyle(
+                                                                  14,
+                                                                  AppColors
+                                                                      .white,
+                                                                  isBold: true),
+                                                        ),
+                                                      )
                                                     ],
                                                   ),
-                                                  Row(
+                                                  Column(
                                                     children: [
                                                       Image.asset(
                                                           ((detail?.state?.ctrlMode ??
@@ -797,9 +851,59 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
                                                               .imagePath,
                                                           width: 20,
                                                           height: 20),
-                                                      SizedBox(width: 10),
-                                                      Text('自动').simpleStyle(14,
-                                                          HexColor('#051F34')),
+                                                      SizedBox(height: 8),
+                                                      GestureDetector(
+                                                        onTapDown: (_) =>
+                                                            setState(() =>
+                                                                _isAutoPressed =
+                                                                    true),
+                                                        onTapUp: (_) =>
+                                                            setState(() =>
+                                                                _isAutoPressed =
+                                                                    false),
+                                                        onTapCancel: () =>
+                                                            setState(() =>
+                                                                _isAutoPressed =
+                                                                    false),
+                                                        onTap: () async {
+                                                          await Api
+                                                              .switchModeTcp(
+                                                                  sn: widget.sn,
+                                                                  ip: _ip ?? '',
+                                                                  port: _port ??
+                                                                      0,
+                                                                  mode: 0);
+                                                        },
+                                                        child:
+                                                            AnimatedContainer(
+                                                          duration:
+                                                              const Duration(
+                                                                  milliseconds:
+                                                                      100),
+                                                          width: 85,
+                                                          height: 35,
+                                                          decoration: BoxDecoration(
+                                                              color: _isAutoPressed
+                                                                  ? AppColors
+                                                                      .blue06
+                                                                      .withOpacity(
+                                                                          0.6)
+                                                                  : AppColors
+                                                                      .blue06,
+                                                              borderRadius:
+                                                                  BorderRadius
+                                                                      .circular(
+                                                                          6)),
+                                                          alignment:
+                                                              Alignment.center,
+                                                          child: Text('自动')
+                                                              .simpleStyle(
+                                                                  14,
+                                                                  AppColors
+                                                                      .white,
+                                                                  isBold: true),
+                                                        ),
+                                                      )
                                                     ],
                                                   )
                                                 ]),
@@ -951,197 +1055,213 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
                 const SizedBox(height: 16),
                 Expanded(
                   flex: 308,
-                  child: Container(
-                    decoration: AppDecorations.panel(),
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _title('手动除冰参数设置'),
-                        const SizedBox(height: 18),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                  mainAxisAlignment: MainAxisAlignment.start,
-                                  children: [
-                                    Text('加热开关').simpleStyle(
+                  child: Opacity(
+                    opacity: (detail?.state?.ctrlMode ?? 0) == 1 ? 1.0 : 0.5,
+                    child: AbsorbPointer(
+                      absorbing: (detail?.state?.ctrlMode ?? 0) == 0,
+                      child: Container(
+                        decoration: AppDecorations.panel(),
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _title('手动除冰参数设置'),
+                            const SizedBox(height: 18),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.start,
+                                      children: [
+                                        Text('加热开关').simpleStyle(
+                                            14, AppColors.blue133,
+                                            isBold: true),
+                                        const SizedBox(width: 18),
+                                        InkWell(
+                                          onTap: () {
+                                            setState(() {
+                                              _heatingOn = true;
+                                            });
+                                          },
+                                          child: Row(
+                                            children: [
+                                              Image.asset(
+                                                  (_heatingOn
+                                                          ? 'ic_jr_kai.png'
+                                                          : 'ic_jr_guan.png')
+                                                      .imagePath,
+                                                  width: 12,
+                                                  height: 12),
+                                              SizedBox(width: 2),
+                                              Text('开').simpleStyle(
+                                                  12, HexColor('#051F34')),
+                                            ],
+                                          ),
+                                        ),
+                                        SizedBox(width: 12),
+                                        InkWell(
+                                          onTap: () {
+                                            setState(() {
+                                              _heatingOn = false;
+                                            });
+                                          },
+                                          child: Row(
+                                            children: [
+                                              Image.asset(
+                                                  (_heatingOn
+                                                          ? 'ic_jr_guan.png'
+                                                          : 'ic_jr_kai.png')
+                                                      .imagePath,
+                                                  width: 12,
+                                                  height: 12),
+                                              SizedBox(width: 2),
+                                              Text('关').simpleStyle(
+                                                  12, HexColor('#051F34')),
+                                            ],
+                                          ),
+                                        ),
+                                      ]),
+                                  Spacer(),
+                                  Row(children: [
+                                    Text('加热时常').simpleStyle(
                                         14, AppColors.blue133,
                                         isBold: true),
-                                    const SizedBox(width: 18),
-                                    InkWell(
-                                      onTap: () {
-                                        setState(() {
-                                          _heatingOn = true;
-                                        });
-                                      },
-                                      child: Row(
-                                        children: [
-                                          Image.asset(
-                                              (_heatingOn
-                                                      ? 'ic_jr_kai.png'
-                                                      : 'ic_jr_guan.png')
-                                                  .imagePath,
-                                              width: 12,
-                                              height: 12),
-                                          SizedBox(width: 2),
-                                          Text('开').simpleStyle(
-                                              12, HexColor('#051F34')),
-                                        ],
-                                      ),
-                                    ),
-                                    SizedBox(width: 12),
-                                    InkWell(
-                                      onTap: () {
-                                        setState(() {
-                                          _heatingOn = false;
-                                        });
-                                      },
-                                      child: Row(
-                                        children: [
-                                          Image.asset(
-                                              (_heatingOn
-                                                      ? 'ic_jr_guan.png'
-                                                      : 'ic_jr_kai.png')
-                                                  .imagePath,
-                                              width: 12,
-                                              height: 12),
-                                          SizedBox(width: 2),
-                                          Text('关').simpleStyle(
-                                              12, HexColor('#051F34')),
-                                        ],
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: SliderTheme(
+                                        data: SliderTheme.of(context).copyWith(
+                                          trackHeight: 3,
+                                          activeTrackColor: AppColors.blue06,
+                                          inactiveTrackColor:
+                                              HexColor('#D9E5F2'),
+                                          thumbColor: AppColors.blue06,
+                                          overlayColor: Colors.transparent,
+                                          overlayShape:
+                                              const RoundSliderOverlayShape(
+                                                  overlayRadius: 0),
+                                          thumbShape:
+                                              const RoundSliderThumbShape(
+                                            enabledThumbRadius: 8,
+                                            disabledThumbRadius: 8,
+                                            elevation: 0,
+                                            pressedElevation: 0,
+                                          ),
+                                          valueIndicatorColor: AppColors.blue06,
+                                          showValueIndicator:
+                                              ShowValueIndicator.always,
+                                        ),
+                                        child: Slider(
+                                          value: _heatingMinutes,
+                                          min: 0,
+                                          max: 180,
+                                          divisions: 180,
+                                          label: '${_heatingMinutes.round()}分',
+                                          onChanged: (v) {
+                                            setState(() {
+                                              _heatingMinutes = v;
+                                            });
+                                          },
+                                        ),
                                       ),
                                     ),
                                   ]),
-                              Spacer(),
-                              Row(children: [
-                                Text('加热时常').simpleStyle(14, AppColors.blue133,
-                                    isBold: true),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: SliderTheme(
-                                    data: SliderTheme.of(context).copyWith(
-                                      trackHeight: 3,
-                                      activeTrackColor: AppColors.blue06,
-                                      inactiveTrackColor: HexColor('#D9E5F2'),
-                                      thumbColor: AppColors.blue06,
-                                      overlayColor: Colors.transparent,
-                                      overlayShape:
-                                          const RoundSliderOverlayShape(
-                                              overlayRadius: 0),
-                                      thumbShape: const RoundSliderThumbShape(
-                                        enabledThumbRadius: 8,
-                                        disabledThumbRadius: 8,
-                                        elevation: 0,
-                                        pressedElevation: 0,
-                                      ),
-                                      valueIndicatorColor: AppColors.blue06,
-                                      showValueIndicator:
-                                          ShowValueIndicator.always,
-                                    ),
-                                    child: Slider(
-                                      value: _heatingMinutes,
-                                      min: 0,
-                                      max: 180,
-                                      divisions: 180,
-                                      label: '${_heatingMinutes.round()}分',
-                                      onChanged: (v) {
-                                        setState(() {
-                                          _heatingMinutes = v;
-                                        });
-                                      },
-                                    ),
-                                  ),
-                                ),
-                              ]),
-                              Spacer(),
-                              Text('不平衡电流阈值').simpleStyle(14, AppColors.blue133,
-                                  isBold: true),
-                              const SizedBox(height: 10),
-                              Row(children: [
-                                Expanded(
-                                  child: TextField(
-                                    controller: _fzController,
-                                    keyboardType: TextInputType.number,
-                                    maxLines: 1,
-                                    decoration: InputDecoration(
-                                      isDense: true,
-                                      counterText: '',
-                                      contentPadding:
-                                          const EdgeInsets.symmetric(
-                                              horizontal: 12, vertical: 13),
-                                      focusedBorder: OutlineInputBorder(
-                                        borderRadius: const BorderRadius.all(
-                                            Radius.circular(8)),
-                                        borderSide: BorderSide(
-                                            color: HexColor('#E2E8F2'),
-                                            width: 1),
-                                      ),
-                                      enabledBorder: OutlineInputBorder(
-                                        borderRadius: const BorderRadius.all(
-                                            Radius.circular(8)),
-                                        borderSide: BorderSide(
-                                            color: HexColor('#E2E8F2'),
-                                            width: 1),
-                                      ),
+                                  Spacer(),
+                                  Text('不平衡电流阈值').simpleStyle(
+                                      14, AppColors.blue133,
+                                      isBold: true),
+                                  const SizedBox(height: 10),
+                                  Row(children: [
+                                    Expanded(
+                                      child: TextField(
+                                        controller: _fzController,
+                                        keyboardType: TextInputType.number,
+                                        maxLines: 1,
+                                        decoration: InputDecoration(
+                                          isDense: true,
+                                          counterText: '',
+                                          contentPadding:
+                                              const EdgeInsets.symmetric(
+                                                  horizontal: 12, vertical: 13),
+                                          focusedBorder: OutlineInputBorder(
+                                            borderRadius:
+                                                const BorderRadius.all(
+                                                    Radius.circular(8)),
+                                            borderSide: BorderSide(
+                                                color: HexColor('#E2E8F2'),
+                                                width: 1),
+                                          ),
+                                          enabledBorder: OutlineInputBorder(
+                                            borderRadius:
+                                                const BorderRadius.all(
+                                                    Radius.circular(8)),
+                                            borderSide: BorderSide(
+                                                color: HexColor('#E2E8F2'),
+                                                width: 1),
+                                          ),
 
-                                      //,
-                                      hintText: '请输入阈值参数',
-                                      hintStyle: TextStyle(
-                                        color: HexColor('#888888'),
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.normal,
+                                          //,
+                                          hintText: '请输入阈值参数',
+                                          hintStyle: TextStyle(
+                                            color: HexColor('#888888'),
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.normal,
+                                          ),
+                                        ),
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.normal,
+                                          color: AppColors.blue133,
+                                        ),
                                       ),
                                     ),
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.normal,
-                                      color: AppColors.blue133,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 22),
-                                GestureDetector(
-                                  onTapDown: (_) =>
-                                      setState(() => _isConfirmPressed = true),
-                                  onTapUp: (_) =>
-                                      setState(() => _isConfirmPressed = false),
-                                  onTapCancel: () =>
-                                      setState(() => _isConfirmPressed = false),
-                                  onTap: () async {
-                                    final heatingOn = _heatingOn;
-                                    final hotTime = _heatingMinutes.round();
-                                    final text = _fzController.text.trim();
-                                    final iSet = text.isEmpty
-                                        ? null
-                                        : num.tryParse(text);
-                                    await _submitHeatingSettings(
-                                      heatingOn: heatingOn,
-                                      hotTime: hotTime,
-                                      iSet: iSet,
-                                    );
-                                  },
-                                  child: AnimatedContainer(
-                                    duration: const Duration(milliseconds: 100),
-                                    width: 85,
-                                    height: 35,
-                                    decoration: BoxDecoration(
-                                        color: _isConfirmPressed
-                                            ? AppColors.blue06.withOpacity(0.6)
-                                            : AppColors.blue06,
-                                        borderRadius: BorderRadius.circular(6)),
-                                    alignment: Alignment.center,
-                                    child: Text('确认').simpleStyle(
-                                        14, AppColors.white,
-                                        isBold: true),
-                                  ),
-                                )
-                              ])
-                            ],
-                          ),
+                                    const SizedBox(width: 22),
+                                    GestureDetector(
+                                      onTapDown: (_) => setState(
+                                          () => _isConfirmPressed = true),
+                                      onTapUp: (_) => setState(
+                                          () => _isConfirmPressed = false),
+                                      onTapCancel: () => setState(
+                                          () => _isConfirmPressed = false),
+                                      onTap: () async {
+                                        final heatingOn = _heatingOn;
+                                        final hotTime = _heatingMinutes.round();
+                                        final text = _fzController.text.trim();
+                                        final iSet = text.isEmpty
+                                            ? null
+                                            : num.tryParse(text);
+                                        await _submitHeatingSettings(
+                                          heatingOn: heatingOn,
+                                          hotTime: hotTime,
+                                          iSet: iSet,
+                                        );
+                                      },
+                                      child: AnimatedContainer(
+                                        duration:
+                                            const Duration(milliseconds: 100),
+                                        width: 85,
+                                        height: 35,
+                                        decoration: BoxDecoration(
+                                            color: _isConfirmPressed
+                                                ? AppColors.blue06
+                                                    .withOpacity(0.6)
+                                                : AppColors.blue06,
+                                            borderRadius:
+                                                BorderRadius.circular(6)),
+                                        alignment: Alignment.center,
+                                        child: Text('确认').simpleStyle(
+                                            14, AppColors.white,
+                                            isBold: true),
+                                      ),
+                                    )
+                                  ])
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
                   ),
                 ),

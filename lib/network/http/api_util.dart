@@ -264,6 +264,54 @@ class Api {
     await completer.future;
   }
 
+  static Future<void> switchModeTcp({
+    required String sn,
+    required String ip,
+    required int port,
+    required int mode,
+  }) async {
+    recordRequestLog(
+        type: 'Switch Mode', sn: sn, ip: ip, port: port, extra: 'mode=$mode');
+    final mgr = WebSocketManager();
+    await mgr.connectTcp(ip, port, timeout: const Duration(seconds: 5));
+    final completer = Completer<void>();
+    late StreamSubscription<String> sub;
+    sub = mgr.stream.listen((event) {
+      try {
+        final obj = json.decode(event);
+        if (obj is Map<String, dynamic>) {
+          final cmdVal = obj['cmd'];
+          final cmdStr = cmdVal is String ? cmdVal : '$cmdVal';
+          if (cmdStr == 'mode_detail') {
+            final rawCode = obj['code'];
+            final code =
+                rawCode is int ? rawCode : int.tryParse('$rawCode') ?? 0;
+            final msg = obj['message'] ?? obj['messge'];
+            recordRequestLog(
+                type: 'Mode Response',
+                sn: sn,
+                ip: ip,
+                port: port,
+                extra: 'Code: $code, Msg: $msg');
+            if (code == 200) {
+              AppNotice.show(title: '提示', content: '操作成功');
+            } else {
+              final m = msg is String ? msg : null;
+              if (m != null && m.isNotEmpty) {
+                AppNotice.show(title: '提示', content: m);
+              }
+            }
+            sub.cancel();
+            completer.complete();
+          }
+        }
+      } catch (_) {}
+    });
+    mgr.sendLine("mode sn=$sn mode=$mode");
+    print("请求 mode sn=$sn mode=$mode");
+    await completer.future;
+  }
+
   static Future<void> syncClockTcp({
     DateTime? time,
   }) async {
