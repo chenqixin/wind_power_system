@@ -41,6 +41,8 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
   String? _ip;
   int? _port;
   Timer? _pollTimer;
+  Timer? _countdownTimer;
+  int _remainingHotTime = 0;
   late AnimationController _blinkController;
   late Animation<double> _opacityAnim;
 
@@ -98,15 +100,19 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
         if (!mounted) return;
         setState(() {
           detail = d;
-          if (!_heatingMinutesInitialized) {
-            final ctrl = (d.state?.ctrlMode ?? 0) == 1;
-            final time = (d.state?.hotTime ?? 0).toDouble();
-            _heatingMinutes = ctrl ? time : 0.0;
+          var time = (d.state?.hotTime ?? 0).toInt();
+          if (!_heatingMinutesInitialized ||
+              (time - _remainingHotTime).abs() > 5) {
+            // final ctrl = (d.state?.ctrlMode ?? 0) == 1;
+            // final time = (d.state?.hotTime ?? 0).toDouble();
+            // _heatingMinutes = ctrl ? time : 0.0;
+            _remainingHotTime = time;
             _heatingMinutesInitialized = true;
           }
           if (!_heatingOnInitialized) {
-            _heatingOn = ((d.state?.ctrlMode ?? 0) == 1) &&
-                ((d.state?.hotState4 ?? 0) == 1);
+            // _heatingOn = ((d.state?.ctrlMode ?? 0) == 1) &&
+            //     ((d.state?.hotState4 ?? 0) == 1);
+            _heatingOn = false;
             _heatingOnInitialized = true;
           }
           if (!_iSetInitialized) {
@@ -190,6 +196,13 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
         ],
       ),
     );
+  }
+
+  String _formatHotTime(int seconds) {
+    final h = seconds ~/ 3600;
+    final m = (seconds % 3600) ~/ 60;
+    final s = seconds % 60;
+    return '${h.toString().padLeft(2, '0')}:${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
   }
 
   //得出电流
@@ -583,6 +596,11 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
     super.initState();
     _loadDevice();
     _fzController.text = '';
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_remainingHotTime > 0) {
+        if (mounted) setState(() => _remainingHotTime--);
+      }
+    });
     _blinkController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 800),
@@ -735,318 +753,288 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
-                          children: [
-                            _title('控制台'),
-                            SizedBox(width: 18),
-                            Text('设备编号：00009527')
-                                .simpleStyle(13, AppColors.blue133),
-                          ],
-                        ),
-                       
+                        Text('设备编号：00009527')
+                            .simpleStyle(13, AppColors.blue133),
                         const SizedBox(height: 6),
-                        Expanded(
+                        Container(
+                          decoration: BoxDecoration(
+                              color: AppColors.blueE9,
+                              borderRadius: BorderRadius.circular(6)),
+                          alignment: Alignment.center,
+                          padding:
+                              EdgeInsets.symmetric(vertical: 8, horizontal: 8),
                           child: Row(
                             children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                              (((detail?.state?.hotState4) ?? 0) == 1)
+                                  ? FadeTransition(
+                                      opacity: _opacityAnim,
+                                      child: Image.asset('ic_jr.png'.imagePath,
+                                          width: 20, height: 20),
+                                    )
+                                  : Image.asset('ic_jr_guan.png'.imagePath,
+                                      width: 20, height: 20),
+                              SizedBox(width: 8),
+                              Text('加热状态').simpleStyle(13, AppColors.blue133,
+                                  isBold: true),
+                              Spacer(),
+                              Text('加热剩余时间：').simpleStyle(13, AppColors.blue133,
+                                  isBold: true),
+                              Text(_formatHotTime(_remainingHotTime))
+                                  .simpleStyle(13, AppColors.blue06,
+                                      isBold: true),
+                            ],
+                          ),
+                        ),
+                        Spacer(),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Container(
+                                decoration: BoxDecoration(
+                                    color: AppColors.blueE9,
+                                    borderRadius: BorderRadius.circular(6)),
+                                alignment: Alignment.center,
+                                padding: EdgeInsets.symmetric(vertical: 4),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                   
-                                    SizedBox(height: 8),
-                                    Expanded(
-                                      child: Container(
-                                        decoration: BoxDecoration(
-                                            color: AppColors.blueE9,
-                                            borderRadius:
-                                                BorderRadius.circular(6)),
-                                        alignment: Alignment.center,
-                                        child: Column(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.center,
-                                          children: [
-                                            Text('除冰模式').simpleStyle(
-                                                14, AppColors.blue133,
-                                                isBold: true),
-                                            const SizedBox(height: 20),
-                                            Row(
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment
-                                                        .spaceEvenly,
-                                                children: [
-                                                  Column(
-                                                    children: [
-                                                      Image.asset(
-                                                          ((detail?.state?.ctrlMode ??
-                                                                          0) ==
-                                                                      1
-                                                                  ? 'ic_select.png'
-                                                                  : 'ic_unselect.png')
-                                                              .imagePath,
-                                                          width: 20,
-                                                          height: 20),
-                                                      SizedBox(height: 8),
-                                                      GestureDetector(
-                                                        onTapDown: (_) =>
-                                                            setState(() =>
-                                                                _isManualPressed =
-                                                                    true),
-                                                        onTapUp: (_) =>
-                                                            setState(() =>
-                                                                _isManualPressed =
-                                                                    false),
-                                                        onTapCancel: () =>
-                                                            setState(() =>
-                                                                _isManualPressed =
-                                                                    false),
-                                                        onTap: () async {
-                                                          await Api
-                                                              .switchModeTcp(
-                                                                  sn: widget.sn,
-                                                                  ip: _ip ?? '',
-                                                                  port: _port ??
-                                                                      0,
-                                                                  mode: 1);
-                                                        },
-                                                        child:
-                                                            AnimatedContainer(
-                                                          duration:
-                                                              const Duration(
-                                                                  milliseconds:
-                                                                      100),
-                                                          width: 85,
-                                                          height: 35,
-                                                          decoration: BoxDecoration(
-                                                              color: _isManualPressed
-                                                                  ? AppColors
-                                                                      .blue06
-                                                                      .withOpacity(
-                                                                          0.6)
-                                                                  : AppColors
-                                                                      .blue06,
-                                                              borderRadius:
-                                                                  BorderRadius
-                                                                      .circular(
-                                                                          6)),
-                                                          alignment:
-                                                              Alignment.center,
-                                                          child: Text('手动')
-                                                              .simpleStyle(
-                                                                  14,
-                                                                  AppColors
-                                                                      .white,
-                                                                  isBold: true),
-                                                        ),
-                                                      )
-                                                    ],
-                                                  ),
-                                                  Column(
-                                                    children: [
-                                                      Image.asset(
-                                                          ((detail?.state?.ctrlMode ??
-                                                                          0) ==
-                                                                      0
-                                                                  ? 'ic_select.png'
-                                                                  : 'ic_unselect.png')
-                                                              .imagePath,
-                                                          width: 20,
-                                                          height: 20),
-                                                      SizedBox(height: 8),
-                                                      GestureDetector(
-                                                        onTapDown: (_) =>
-                                                            setState(() =>
-                                                                _isAutoPressed =
-                                                                    true),
-                                                        onTapUp: (_) =>
-                                                            setState(() =>
-                                                                _isAutoPressed =
-                                                                    false),
-                                                        onTapCancel: () =>
-                                                            setState(() =>
-                                                                _isAutoPressed =
-                                                                    false),
-                                                        onTap: () async {
-                                                          await Api
-                                                              .switchModeTcp(
-                                                                  sn: widget.sn,
-                                                                  ip: _ip ?? '',
-                                                                  port: _port ??
-                                                                      0,
-                                                                  mode: 0);
-                                                        },
-                                                        child:
-                                                            AnimatedContainer(
-                                                          duration:
-                                                              const Duration(
-                                                                  milliseconds:
-                                                                      100),
-                                                          width: 85,
-                                                          height: 35,
-                                                          decoration: BoxDecoration(
-                                                              color: _isAutoPressed
-                                                                  ? AppColors
-                                                                      .blue06
-                                                                      .withOpacity(
-                                                                          0.6)
-                                                                  : AppColors
-                                                                      .blue06,
-                                                              borderRadius:
-                                                                  BorderRadius
-                                                                      .circular(
-                                                                          6)),
-                                                          alignment:
-                                                              Alignment.center,
-                                                          child: Text('自动')
-                                                              .simpleStyle(
-                                                                  14,
-                                                                  AppColors
-                                                                      .white,
-                                                                  isBold: true),
-                                                        ),
-                                                      )
-                                                    ],
-                                                  )
-                                                ]),
-                                          ],
-                                        ),
-                                      ),
+                                    Image.asset(
+                                        ((detail?.state?.ctrlMode ?? 0) == 1
+                                                ? 'ic_select.png'
+                                                : 'ic_unselect.png')
+                                            .imagePath,
+                                        width: 20,
+                                        height: 20),
+                                    SizedBox(
+                                      width: 8,
+                                    ),
+                                    Text('手动').simpleStyle(
+                                      11,
+                                      HexColor('#051F34'),
                                     ),
                                   ],
                                 ),
                               ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.center,
-                                    children: [
-                                      (((detail?.state?.hotState4) ?? 0) == 1)
-                                          ? FadeTransition(
-                                              opacity: _opacityAnim,
-                                              child: Image.asset(
-                                                  'ic_jr.png'.imagePath,
-                                                  width: 20,
-                                                  height: 20),
-                                            )
-                                          : Image.asset(
-                                              'ic_jr_guan.png'.imagePath,
-                                              width: 20,
-                                              height: 20),
-                                      SizedBox(height: 8),
-                                      Text('加热状态').simpleStyle(
-                                          13, AppColors.blue133,
-                                          isBold: true),
-                                      SizedBox(height: 8),
-                                      Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceEvenly,
-                                        children: [
-                                          Column(
-                                            children: [
-                                              Image.asset(
-                                                  ((detail?.state?.errorStop ??
-                                                                  0) ==
-                                                              1
-                                                          ? 'ic_select.png'
-                                                          : 'ic_unselect.png')
-                                                      .imagePath,
-                                                  width: 20,
-                                                  height: 20),
-                                              const SizedBox(height: 8),
-                                              GestureDetector(
-                                                onTapDown: (_) => setState(() =>
-                                                    _isEmergencyStopPressed =
-                                                        true),
-                                                onTapUp: (_) => setState(() =>
-                                                    _isEmergencyStopPressed =
-                                                        false),
-                                                onTapCancel: () => setState(() =>
-                                                    _isEmergencyStopPressed =
-                                                        false),
-                                                onTap: () async {
-                                                  await Api.emergencyStopTcp(
-                                                      sn: widget.sn,
-                                                      ip: _ip ?? '',
-                                                      port: _port ?? 0);
-                                                  //getSNDetail(widget.sn);
-                                                },
-                                                child: AnimatedContainer(
-                                                  duration: const Duration(
-                                                      milliseconds: 100),
-                                                  width: 85,
-                                                  height: 35,
-                                                  decoration: BoxDecoration(
-                                                      color:
-                                                          _isEmergencyStopPressed
-                                                              ? AppColors.blue06
-                                                                  .withOpacity(
-                                                                      0.6)
-                                                              : AppColors
-                                                                  .blue06,
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                              6)),
-                                                  alignment: Alignment.center,
-                                                  child: Text('急停').simpleStyle(
-                                                      14, AppColors.white,
-                                                      isBold: true),
-                                                ),
-                                              )
-                                            ],
-                                          ),
-                                          Column(
-                                            children: [
-                                              Image.asset(
-                                                  ((detail?.state?.restFlag ??
-                                                                  0) ==
-                                                              1
-                                                          ? 'ic_select.png'
-                                                          : 'ic_unselect.png')
-                                                      .imagePath,
-                                                  width: 20,
-                                                  height: 20),
-                                              const SizedBox(height: 8),
-                                              GestureDetector(
-                                                onTapDown: (_) => setState(() =>
-                                                    _isResetPressed = true),
-                                                onTapUp: (_) => setState(() =>
-                                                    _isResetPressed = false),
-                                                onTapCancel: () => setState(
-                                                    () => _isResetPressed =
-                                                        false),
-                                                onTap: () async {
-                                                  await Api.resetTcp(
-                                                      sn: widget.sn,
-                                                      ip: _ip ?? '',
-                                                      port: _port ?? 0);
-                                                },
-                                                child: AnimatedContainer(
-                                                  duration: const Duration(
-                                                      milliseconds: 100),
-                                                  width: 85,
-                                                  height: 35,
-                                                  decoration: BoxDecoration(
-                                                      color: _isResetPressed
-                                                          ? AppColors.blue06
-                                                              .withOpacity(0.6)
-                                                          : AppColors.blue06,
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                              6)),
-                                                  alignment: Alignment.center,
-                                                  child: Text('复位').simpleStyle(
-                                                      14, AppColors.white,
-                                                      isBold: true),
-                                                ),
-                                              )
-                                            ],
-                                          ),
-                                        ],
-                                      )
-                                    ]),
+                            ),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: Container(
+                                decoration: BoxDecoration(
+                                    color: AppColors.blueE9,
+                                    borderRadius: BorderRadius.circular(6)),
+                                alignment: Alignment.center,
+                                padding: EdgeInsets.symmetric(vertical: 4),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Image.asset(
+                                        ((detail?.state?.ctrlMode ?? 0) == 0
+                                                ? 'ic_select.png'
+                                                : 'ic_unselect.png')
+                                            .imagePath,
+                                        width: 20,
+                                        height: 20),
+                                    SizedBox(
+                                      width: 8,
+                                    ),
+                                    Text('自动').simpleStyle(
+                                      11,
+                                      HexColor('#051F34'),
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ],
-                          ),
+                            ),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: Container(
+                                decoration: BoxDecoration(
+                                    color: AppColors.blueE9,
+                                    borderRadius: BorderRadius.circular(6)),
+                                alignment: Alignment.center,
+                                padding: EdgeInsets.symmetric(vertical: 4),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Image.asset(
+                                        ((detail?.state?.errorStop ?? 0) == 1
+                                                ? 'ic_jr.png'
+                                                : 'ic_jr_guan.png')
+                                            .imagePath,
+                                        width: 20,
+                                        height: 20),
+                                    SizedBox(
+                                      width: 8,
+                                    ),
+                                    Text('急停').simpleStyle(
+                                      11,
+                                      HexColor('#051F34'),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: Container(
+                                decoration: BoxDecoration(
+                                    color: AppColors.blueE9,
+                                    borderRadius: BorderRadius.circular(6)),
+                                alignment: Alignment.center,
+                                padding: EdgeInsets.symmetric(vertical: 4),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Image.asset(
+                                        ((detail?.state?.restFlag ?? 0) == 1
+                                                ? 'ic_select.png'
+                                                : 'ic_unselect.png')
+                                            .imagePath,
+                                        width: 20,
+                                        height: 20),
+                                    SizedBox(
+                                      width: 8,
+                                    ),
+                                    Text('复位').simpleStyle(
+                                      11,
+                                      HexColor('#051F34'),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: GestureDetector(
+                                onTapDown: (_) =>
+                                    setState(() => _isManualPressed = true),
+                                onTapUp: (_) =>
+                                    setState(() => _isManualPressed = false),
+                                onTapCancel: () =>
+                                    setState(() => _isManualPressed = false),
+                                onTap: () async {
+                                  await Api.switchModeTcp(
+                                      sn: widget.sn,
+                                      ip: _ip ?? '',
+                                      port: _port ?? 0,
+                                      mode: 1);
+                                },
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 100),
+                                  width: 85,
+                                  height: 35,
+                                  decoration: BoxDecoration(
+                                      color: _isManualPressed
+                                          ? AppColors.blue06.withOpacity(0.6)
+                                          : AppColors.blue06,
+                                      borderRadius: BorderRadius.circular(6)),
+                                  alignment: Alignment.center,
+                                  child: Text('手动').simpleStyle(
+                                      14, AppColors.white,
+                                      isBold: true),
+                                ),
+                              ),
+                            ),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: GestureDetector(
+                                onTapDown: (_) =>
+                                    setState(() => _isAutoPressed = true),
+                                onTapUp: (_) =>
+                                    setState(() => _isAutoPressed = false),
+                                onTapCancel: () =>
+                                    setState(() => _isAutoPressed = false),
+                                onTap: () async {
+                                  await Api.switchModeTcp(
+                                      sn: widget.sn,
+                                      ip: _ip ?? '',
+                                      port: _port ?? 0,
+                                      mode: 0);
+                                },
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 100),
+                                  width: 85,
+                                  height: 35,
+                                  decoration: BoxDecoration(
+                                      color: _isAutoPressed
+                                          ? AppColors.btnCA.withOpacity(0.6)
+                                          : AppColors.btnCA,
+                                      borderRadius: BorderRadius.circular(6)),
+                                  alignment: Alignment.center,
+                                  child: Text('自动').simpleStyle(
+                                      14, AppColors.white,
+                                      isBold: true),
+                                ),
+                              ),
+                            ),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: GestureDetector(
+                                onTapDown: (_) => setState(
+                                    () => _isEmergencyStopPressed = true),
+                                onTapUp: (_) => setState(
+                                    () => _isEmergencyStopPressed = false),
+                                onTapCancel: () => setState(
+                                    () => _isEmergencyStopPressed = false),
+                                onTap: () async {
+                                  await Api.emergencyStopTcp(
+                                      sn: widget.sn,
+                                      ip: _ip ?? '',
+                                      port: _port ?? 0);
+                                  //getSNDetail(widget.sn);
+                                },
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 100),
+                                  width: 85,
+                                  height: 35,
+                                  decoration: BoxDecoration(
+                                      color: _isEmergencyStopPressed
+                                          ? AppColors.textDB.withOpacity(0.6)
+                                          : AppColors.textDB,
+                                      borderRadius: BorderRadius.circular(6)),
+                                  alignment: Alignment.center,
+                                  child: Text('急停').simpleStyle(
+                                      14, AppColors.white,
+                                      isBold: true),
+                                ),
+                              ),
+                            ),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: GestureDetector(
+                                onTapDown: (_) =>
+                                    setState(() => _isResetPressed = true),
+                                onTapUp: (_) =>
+                                    setState(() => _isResetPressed = false),
+                                onTapCancel: () =>
+                                    setState(() => _isResetPressed = false),
+                                onTap: () async {
+                                  await Api.resetTcp(
+                                      sn: widget.sn,
+                                      ip: _ip ?? '',
+                                      port: _port ?? 0);
+                                },
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 100),
+                                  width: 85,
+                                  height: 35,
+                                  decoration: BoxDecoration(
+                                      color: _isResetPressed
+                                          ? AppColors.btnCA.withOpacity(0.6)
+                                          : AppColors.btnCA,
+                                      borderRadius: BorderRadius.circular(6)),
+                                  alignment: Alignment.center,
+                                  child: Text('复位').simpleStyle(
+                                      14, AppColors.white,
+                                      isBold: true),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),

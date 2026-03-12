@@ -307,8 +307,8 @@ class Api {
         }
       } catch (_) {}
     });
-    mgr.sendLine("mode sn=$sn mode=$mode");
-    print("请求 mode sn=$sn mode=$mode");
+    mgr.sendLine("mode sn=$sn ctrl=$mode");
+    print("请求 mode sn=$sn ctrl=$mode");
     await completer.future;
   }
 

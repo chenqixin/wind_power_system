@@ -10,6 +10,9 @@ extension AppColors on Colors {
   static const blueE9 = Color(0xFFE9F4FF);
   static const blue0C = Color(0xFF0C83BB);
 
+  static const btnCA = Color(0xFFCADBEB);
+
+
   static const white = Colors.white;
   static const black = Colors.black;
   static const lightBackground = Color(0xFFF5F5F5);
@@ -23,8 +26,8 @@ extension AppColors on Colors {
   static const textGray = Color(0xFF666666);
   static const textLightGray = Color(0xFF999999);
   static const textLighterGray = Color(0xFFCCCCCC);
-  static const textRed = Color(0xFFFF0042);
-
+  static const textRed = Color(0xFFFF0042);//#DB3838
+  static const textDB = Color(0xFFDB3838);
   /// 如 0xffffff 
   static MaterialColor hexInt(int color) {
     return MaterialColor(0xFF000000 + color, const {});
