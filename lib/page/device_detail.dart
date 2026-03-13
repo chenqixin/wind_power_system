@@ -42,7 +42,7 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
   int? _port;
   Timer? _pollTimer;
   Timer? _countdownTimer;
-  int _remainingHotTime = 0;
+  int _remainingHotTime = 40;
   late AnimationController _blinkController;
   late Animation<double> _opacityAnim;
 
@@ -631,6 +631,7 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
     super.dispose();
     _fzController.dispose();
     _pollTimer?.cancel();
+    _countdownTimer?.cancel();
     _blinkController.dispose();
   }
 
@@ -928,9 +929,12 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
                                   width: 85,
                                   height: 35,
                                   decoration: BoxDecoration(
-                                      color: _isManualPressed
-                                          ? AppColors.blue06.withOpacity(0.6)
-                                          : AppColors.blue06,
+                                      color:
+                                          ((detail?.state?.ctrlMode ?? 0) == 1
+                                                  ? AppColors.blue06
+                                                  : AppColors.btnCA)
+                                              .withOpacity(
+                                                  _isManualPressed ? 0.6 : 1.0),
                                       borderRadius: BorderRadius.circular(6)),
                                   alignment: Alignment.center,
                                   child: Text('手动').simpleStyle(
@@ -960,9 +964,12 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
                                   width: 85,
                                   height: 35,
                                   decoration: BoxDecoration(
-                                      color: _isAutoPressed
-                                          ? AppColors.btnCA.withOpacity(0.6)
-                                          : AppColors.btnCA,
+                                      color:
+                                          ((detail?.state?.ctrlMode ?? 0) == 0
+                                                  ? AppColors.blue06
+                                                  : AppColors.btnCA)
+                                              .withOpacity(
+                                                  _isAutoPressed ? 0.6 : 1.0),
                                       borderRadius: BorderRadius.circular(6)),
                                   alignment: Alignment.center,
                                   child: Text('自动').simpleStyle(
@@ -992,9 +999,11 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
                                   width: 85,
                                   height: 35,
                                   decoration: BoxDecoration(
-                                      color: _isEmergencyStopPressed
-                                          ? AppColors.textDB.withOpacity(0.6)
-                                          : AppColors.textDB,
+                                      color:    ((detail?.state?.errorStop ?? 0) == 1
+                                          ? AppColors.textDB
+                                          : AppColors.btnCA)
+                                          .withOpacity(
+                                          _isEmergencyStopPressed ? 0.6 : 1.0),
                                       borderRadius: BorderRadius.circular(6)),
                                   alignment: Alignment.center,
                                   child: Text('急停').simpleStyle(
@@ -1023,9 +1032,12 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
                                   width: 85,
                                   height: 35,
                                   decoration: BoxDecoration(
-                                      color: _isResetPressed
-                                          ? AppColors.btnCA.withOpacity(0.6)
-                                          : AppColors.btnCA,
+                                      color:
+                                          ((detail?.state?.restFlag ?? 0) == 1
+                                                  ? AppColors.blue06
+                                                  : AppColors.btnCA)
+                                              .withOpacity(
+                                                  _isResetPressed ? 0.6 : 1.0),
                                       borderRadius: BorderRadius.circular(6)),
                                   alignment: Alignment.center,
                                   child: Text('复位').simpleStyle(
