@@ -108,8 +108,8 @@ class Api {
         }
       } catch (_) {}
     });
-    mgr.sendLine("detail sn=$sn");
-    print("请求 detail sn=$sn");
+    mgr.sendLine("detail sn=$sn\r\n");
+    print("请求 detail sn=$sn\r\n");
     await completer.future;
   }
 
@@ -154,7 +154,7 @@ class Api {
         }
       } catch (_) {}
     });
-    mgr.sendLine("stop sn=$sn");
+    mgr.sendLine("stop sn=$sn\r\n");
     await completer.future;
   }
 
@@ -203,7 +203,7 @@ class Api {
         }
       } catch (_) {}
     });
-    mgr.sendLine("reset sn=$sn");
+    mgr.sendLine("reset sn=$sn\r\n");
     await completer.future;
   }
 
@@ -259,8 +259,8 @@ class Api {
         }
       } catch (_) {}
     });
-    mgr.sendLine("hot sn=$sn heatingOn=$op hotTime=$ht iSet=$iset");
-    print("请求 hot sn=$sn heatingOn=$op hotTime=$ht iSet=$iset");
+    mgr.sendLine("hot sn=$sn heatingOn=$op hotTime=$ht iSet=$iset\r\n");
+    print("请求 hot sn=$sn heatingOn=$op hotTime=$ht iSet=$iset\r\n");
     await completer.future;
   }
 
@@ -307,8 +307,8 @@ class Api {
         }
       } catch (_) {}
     });
-    mgr.sendLine("mode sn=$sn ctrl=$mode");
-    print("请求 mode sn=$sn ctrl=$mode");
+    mgr.sendLine("mode sn=$sn ctrl=$mode\r\n");
+    print("请求 mode sn=$sn ctrl=$mode\r\n");
     await completer.future;
   }
 
@@ -340,7 +340,7 @@ class Api {
             extra: 'Time: $y-$m-$d $h:$min:$s');
         await mgr.connectTcp(ip, port, timeout: const Duration(seconds: 3));
         mgr.sendLine(
-            "clock  year=$y month=$m day=$d hour=$h minute=$min second=$s");
+            "clock  year=$y month=$m day=$d hour=$h minute=$min second=$s\r\n");
         print("请求设备 $sn ($ip:$port) clock");
         // 这里不等待响应，直接处理下一个设备
         await Future.delayed(const Duration(milliseconds: 200));
