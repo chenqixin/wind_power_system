@@ -51,6 +51,7 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
   bool _isConfirmPressed = false;
   bool _isManualPressed = false;
   bool _isAutoPressed = false;
+  bool _tcpConnected = false;
 
   //故障
   bool _faultOn(int index) {
@@ -99,6 +100,7 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
         final d = model.DeviceDetailData.fromJson(data);
         if (!mounted) return;
         setState(() {
+          _tcpConnected = true;
           detail = d;
           var time = (d.state?.hotTime ?? 0).toInt();
           if (!_heatingMinutesInitialized ||
@@ -121,7 +123,9 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
           }
         });
       },
-      failCallback: (code, msg) {},
+      failCallback: (code, msg) {
+        if (mounted) setState(() => _tcpConnected = false);
+      },
     );
   }
 
@@ -754,8 +758,21 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('设备编号：00009527')
-                            .simpleStyle(13, AppColors.blue133),
+                        Row(
+                          children: [
+                            Text('设备编号：00009527')
+                                .simpleStyle(13, AppColors.blue133),
+                            Spacer(),
+                            Text(_tcpConnected
+                                    ? '${_ip ?? ""} 连接正常'
+                                    : '${_ip ?? ""} 连接失败')
+                                .simpleStyle(
+                                    13,
+                                    _tcpConnected
+                                        ? AppColors.blue06
+                                        : AppColors.textDB),
+                          ],
+                        ),
                         const SizedBox(height: 6),
                         Container(
                           decoration: BoxDecoration(
@@ -778,16 +795,21 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
                               Text('加热状态').simpleStyle(13, AppColors.blue133,
                                   isBold: true),
                               Spacer(),
-                              Visibility(visible: (((detail?.state?.hotState4) ?? 0) == 1)?true:false,child: Row(
-                                children: [
-                                  Text('加热剩余时间：').simpleStyle(13, AppColors.blue133,
-                                      isBold: true),
-                                  Text(_formatHotTime(_remainingHotTime))
-                                      .simpleStyle(13, AppColors.blue06,
-                                      isBold: true),
-                                ],
-                              ))
-
+                              Visibility(
+                                  visible:
+                                      (((detail?.state?.hotState4) ?? 0) == 1)
+                                          ? true
+                                          : false,
+                                  child: Row(
+                                    children: [
+                                      Text('加热剩余时间：').simpleStyle(
+                                          13, AppColors.blue133,
+                                          isBold: true),
+                                      Text(_formatHotTime(_remainingHotTime))
+                                          .simpleStyle(13, AppColors.blue06,
+                                              isBold: true),
+                                    ],
+                                  ))
                             ],
                           ),
                         ),
@@ -1004,11 +1026,13 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
                                   width: 85,
                                   height: 35,
                                   decoration: BoxDecoration(
-                                      color:    ((detail?.state?.errorStop ?? 0) == 1
-                                          ? AppColors.textDB
-                                          : AppColors.btnCA)
-                                          .withOpacity(
-                                          _isEmergencyStopPressed ? 0.6 : 1.0),
+                                      color: ((detail?.state?.errorStop ?? 0) ==
+                                                  1
+                                              ? AppColors.textDB
+                                              : AppColors.btnCA)
+                                          .withOpacity(_isEmergencyStopPressed
+                                              ? 0.6
+                                              : 1.0),
                                       borderRadius: BorderRadius.circular(6)),
                                   alignment: Alignment.center,
                                   child: Text('急停').simpleStyle(
