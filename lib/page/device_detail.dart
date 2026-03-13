@@ -778,11 +778,16 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
                               Text('加热状态').simpleStyle(13, AppColors.blue133,
                                   isBold: true),
                               Spacer(),
-                              Text('加热剩余时间：').simpleStyle(13, AppColors.blue133,
-                                  isBold: true),
-                              Text(_formatHotTime(_remainingHotTime))
-                                  .simpleStyle(13, AppColors.blue06,
+                              Visibility(visible: (((detail?.state?.hotState4) ?? 0) == 1)?true:false,child: Row(
+                                children: [
+                                  Text('加热剩余时间：').simpleStyle(13, AppColors.blue133,
                                       isBold: true),
+                                  Text(_formatHotTime(_remainingHotTime))
+                                      .simpleStyle(13, AppColors.blue06,
+                                      isBold: true),
+                                ],
+                              ))
+
                             ],
                           ),
                         ),
