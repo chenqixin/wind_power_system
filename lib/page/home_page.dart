@@ -50,7 +50,7 @@ class WindItem {
 class _HomePageState extends State<HomePage> {
   List<WindItem> items = [];
   Timer? _pollTimer;
-  StreamSubscription<String>? _snErrorSub;
+  StreamSubscription<Map<String, dynamic>>? _snErrorSub;
   bool _errorDialogOpen = false;
 
   int? hoverIndex;
@@ -319,7 +319,7 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     _loadItems().then((_) {
-      _listenSnError();
+      listenSnError();
       _syncClockOnce();
     });
     _pollTimer = Timer.periodic(const Duration(seconds: 20), (timer) {
@@ -436,61 +436,47 @@ class _HomePageState extends State<HomePage> {
     } catch (_) {}
   }
 
-  Future<void> _listenSnError() async {
-    final devs = await AppDatabase.allDevices();
+  Future<void> listenSnError() async {
+
     final mgr = WebSocketManager();
-    for (final dev in devs) {
-      final ip = (dev['ip'] as String?) ?? '';
-      final port = (dev['port'] as int?) ?? 0;
-      if (ip.isNotEmpty && port != 0) {
-        // 尝试连接每一个设备。WebSocketManager 内部会管理多连接。
-        mgr
-            .connectTcp(ip, port, timeout: const Duration(seconds: 5))
-            .catchError((e) {
-          print("监听设备错误时连接失败 ($ip:$port): $e");
-        });
-      }
-    }
 
     _snErrorSub?.cancel();
-    _snErrorSub = mgr.stream.listen((event) async {
-      try {
-        final obj = json.decode(event);
-        if (obj is Map<String, dynamic>) {
-          final cmdRaw = obj['cmd'];
-          final cmdStr = cmdRaw is String ? cmdRaw : '$cmdRaw';
-          if (cmdStr == 'error_detail') {
-            final rawCode = obj['code'];
-            final code =
-                rawCode is int ? rawCode : int.tryParse('$rawCode') ?? 0;
-            final msg = obj['message'] ?? obj['messge'];
-            final snVal = obj['sn'];
-            final sn = snVal is String ? snVal : '$snVal';
-            if (code == 200) {
-              if (_errorDialogOpen) return;
-              _errorDialogOpen = true;
-              final res = await showDialog(
-                context: context,
-                barrierDismissible: true,
-                builder: (_) => ErrorAlarmDialog(
-                  title: '故障报警',
-                  content: msg is String && msg.isNotEmpty
-                      ? msg
-                      : (sn.isNotEmpty ? '风机 $sn 发生故障报警' : '设备发生故障报警'),
-                ),
-              );
-              _errorDialogOpen = false;
-              if (res == true && sn.isNotEmpty) {
-                ContentNavigator.navigatorKey.currentState!
-                    .pushNamed('/detail', arguments: sn);
-              }
-            }
-          }
-        }
-      } catch (_) {}
-    });
-  }
 
+    _snErrorSub = mgr.devicePushStream.listen((obj) async {
+
+      final cmd = obj["cmd"];
+
+      if (cmd != "error_detail") return;
+
+      final code = obj["code"] ?? 0;
+
+      if (code != 200) return;
+
+      final msg = obj["message"];
+
+      final sn = obj["sn"];
+
+      if (_errorDialogOpen) return;
+
+      _errorDialogOpen = true;
+
+      final res = await showDialog(
+        context: context,
+        builder: (_) => ErrorAlarmDialog(
+          title: "故障报警",
+          content: msg ?? "设备 $sn 故障",
+        ),
+      );
+
+      _errorDialogOpen = false;
+
+      if (res == true && sn != null) {
+        Navigator.pushNamed(context, "/detail", arguments: sn);
+      }
+
+    });
+
+  }
   @override
   void dispose() {
     _pollTimer?.cancel();
@@ -555,7 +541,7 @@ class _HomePageState extends State<HomePage> {
                             builder: (_) => AddSnDialog(),
                           );
                           if (res != null) {
-                            _loadItems().then((_) => _listenSnError());
+                            _loadItems().then((_) => listenSnError());
                           }
                         },
                       ),

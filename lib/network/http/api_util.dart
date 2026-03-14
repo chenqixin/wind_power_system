@@ -1,68 +1,23 @@
-import 'ai_http_request.dart';
 import 'dart:async';
 import 'dart:convert';
-import 'package:wind_power_system/network/socket/web_socket_manager.dart';
-import 'package:wind_power_system/core/config/tcp_config.dart';
-import 'package:wind_power_system/view/notice_dialog.dart';
-import 'package:wind_power_system/db/app_database.dart';
 import 'package:wind_power_system/core/utils/print_utils.dart';
-
+import 'package:wind_power_system/view/notice_dialog.dart';
+import 'package:wind_power_system/network/socket/web_socket_manager.dart';
+import 'package:wind_power_system/db/app_database.dart';
 class Api {
-  static AIHttpRequest httpRequest = AIHttpRequest();
-
-  static Future get(
-    String path, {
-    Map<String, dynamic>? params,
-    required Function(dynamic data) successCallback,
-    Function(int code, String? msg)? failCallback,
-    bool toastErrorMsg = true,
-  }) async {
-    return httpRequest.get(
-      path,
-      params: params,
-      successCallback: successCallback,
-      failCallback: failCallback,
-      toastErrorMsg: toastErrorMsg,
-    );
-  }
-
-  static Future post(
-    String path, {
-    Map<String, dynamic>? params,
-    Object? data,
-    required Function(dynamic data) successCallback,
-    Function(int code, String? msg)? failCallback,
-    bool toastErrorMsg = true,
-  }) async {
-    return httpRequest.post(
-      path,
-      params: params,
-      data: data,
-      successCallback: successCallback,
-      failCallback: failCallback,
-      toastErrorMsg: toastErrorMsg,
-    );
-  }
-
   static Future<void> requestDevicePolling({
     required String sn,
     required String ip,
     required int port,
   }) async {
     recordRequestLog(type: 'Polling', sn: sn, ip: ip, port: port);
-    await WebSocketManager()
-        .connectTcp(ip, port, timeout: const Duration(seconds: 5));
-  }
-
-  static Future<void> requestDeviceDetail({
-    required String sn,
-    required String ip,
-    required int port,
-  }) async {
-    recordRequestLog(type: 'Detail Request', sn: sn, ip: ip, port: port);
-    await WebSocketManager()
-        .connectTcp(ip, port, timeout: const Duration(seconds: 5));
-    WebSocketManager().sendLine("detail sn=$sn");
+    try {
+      // 保持连接即可，无需立即发送命令
+      await WebSocketManager().getConnection(ip, port);
+    } catch (e) {
+      print("Polling failed: $e");
+      recordRequestLog(type: 'Polling Failed', sn: sn, ip: ip, port: port, extra: '$e');
+    }
   }
 
   static Future<void> getDeviceDetailTcp({
@@ -72,45 +27,27 @@ class Api {
     required Function(dynamic data) successCallback,
     Function(int code, String? msg)? failCallback,
   }) async {
-    recordRequestLog(type: 'Get Detail', sn: sn, ip: ip, port: port);
-    final mgr = WebSocketManager();
-    await mgr.connectTcp(ip, port, timeout: const Duration(seconds: 5));
-    final completer = Completer<void>();
-    late StreamSubscription<String> sub;
-    sub = mgr.stream.listen((event) {
-      try {
-        final obj = json.decode(event);
-        if (obj is Map<String, dynamic>) {
-          final cmd = obj['cmd'];
-          final resSn = obj['sn']?.toString();
-          if (cmd == 'sn_detail' && (resSn == null || resSn == sn)) {
-            final rawCode = obj['code'];
-            final code =
-                rawCode is int ? rawCode : int.tryParse('$rawCode') ?? 0;
-            final msg = obj['message'] ?? obj['messge'];
-            recordRequestLog(
-                type: 'Detail Response',
-                sn: sn,
-                ip: ip,
-                port: port,
-                extra: 'Code: $code, Msg: $msg');
-            if (code == 200) {
-              successCallback.call(obj['data']);
-            } else {
-              failCallback?.call(code, msg is String ? msg : null);
-              if (msg is String && msg.isNotEmpty) {
-                AppNotice.show(title: '提示', content: msg);
-              }
-            }
-            sub.cancel();
-            completer.complete();
-          }
-        }
-      } catch (_) {}
-    });
-    mgr.sendLine("detail sn=$sn\r\n");
-    print("请求 detail sn=$sn\r\n");
-    await completer.future;
+
+    try {
+      final res = await WebSocketManager().sendCommand(
+        host: ip,
+        port: port,
+        cmd: 'sn_detail',
+        line: 'detail sn=$sn',
+      );
+
+      final rawCode = res['code'];
+      final code = rawCode is int ? rawCode : int.tryParse('$rawCode') ?? 0;
+      final msg = res['message'] ?? res['messge'];
+
+      if (code == 200) {
+        successCallback.call(res['data']);
+      } else {
+        failCallback?.call(code, msg);
+      }
+    } catch (e) {
+      failCallback?.call(-1, e.toString());
+    }
   }
 
   static Future<void> emergencyStopTcp({
@@ -119,43 +56,23 @@ class Api {
     required int port,
   }) async {
     recordRequestLog(type: 'Emergency Stop', sn: sn, ip: ip, port: port);
-    final mgr = WebSocketManager();
-    await mgr.connectTcp(ip, port, timeout: const Duration(seconds: 5));
-    final completer = Completer<void>();
-    late StreamSubscription<String> sub;
-    sub = mgr.stream.listen((event) {
-      try {
-        final obj = json.decode(event);
-        if (obj is Map<String, dynamic>) {
-          final cmdVal = obj['cmd'];
-          final cmdStr = cmdVal is String ? cmdVal : '$cmdVal';
-          if (cmdStr == 'stop_detail') {
-            final rawCode = obj['code'];
-            final code =
-                rawCode is int ? rawCode : int.tryParse('$rawCode') ?? 0;
-            final msg = obj['message'] ?? obj['messge'];
-            recordRequestLog(
-                type: 'Stop Response',
-                sn: sn,
-                ip: ip,
-                port: port,
-                extra: 'Code: $code, Msg: $msg');
-            if (code == 200) {
-              AppNotice.show(title: '提示', content: '操作成功');
-            } else {
-              final m = msg is String ? msg : null;
-              if (m != null && m.isNotEmpty) {
-                AppNotice.show(title: '提示', content: m);
-              }
-            }
-            sub.cancel();
-            completer.complete();
-          }
-        }
-      } catch (_) {}
-    });
-    mgr.sendLine("stop sn=$sn\r\n");
-    await completer.future;
+    try {
+      final res = await WebSocketManager().sendCommand(
+        host: ip,
+        port: port,
+        cmd: 'stop_detail',
+        line: 'stop sn=$sn',
+      );
+      final code = res['code'] ?? 0;
+      final msg = res['message'] ?? res['messge'];
+      if (code == 200) {
+        AppNotice.show(title: '提示', content: '操作成功');
+      } else if (msg != null) {
+        AppNotice.show(title: '提示', content: msg.toString());
+      }
+    } catch (e) {
+      print("Emergency stop failed: $e");
+    }
   }
 
   static Future<void> resetTcp({
@@ -164,47 +81,23 @@ class Api {
     required int port,
   }) async {
     recordRequestLog(type: 'Reset', sn: sn, ip: ip, port: port);
-    final mgr = WebSocketManager();
-    await mgr.connectTcp(ip, port, timeout: const Duration(seconds: 5));
-    final completer = Completer<void>();
-    late StreamSubscription<String> sub;
-    sub = mgr.stream.listen((event) {
-      try {
-        final obj = json.decode(event);
-        if (obj is Map<String, dynamic>) {
-          final cmdVal = obj['cmd'];
-          final cmdStr = cmdVal is String ? cmdVal : '$cmdVal';
-          if (cmdStr == 'reset_detail') {
-            final rawCode = obj['code'];
-            final code =
-                rawCode is int ? rawCode : int.tryParse('$rawCode') ?? 0;
-            final msg = obj['message'] ?? obj['messge'];
-            recordRequestLog(
-                type: 'Reset Response',
-                sn: sn,
-                ip: ip,
-                port: port,
-                extra: 'Code: $code, Msg: $msg');
-            if (code == 200) {
-              AppNotice.show(title: '提示', content: '操作成功');
-              try {
-                // 复位成功后，断开并重建 TCP 连接
-                mgr.restartTcp();
-              } catch (_) {}
-            } else {
-              final m = msg is String ? msg : null;
-              if (m != null && m.isNotEmpty) {
-                AppNotice.show(title: '提示', content: m);
-              }
-            }
-            sub.cancel();
-            completer.complete();
-          }
-        }
-      } catch (_) {}
-    });
-    mgr.sendLine("reset sn=$sn\r\n");
-    await completer.future;
+    try {
+      final res = await WebSocketManager().sendCommand(
+        host: ip,
+        port: port,
+        cmd: 'reset_detail',
+        line: 'reset sn=$sn',
+      );
+      final code = res['code'] ?? 0;
+      final msg = res['message'] ?? res['messge'];
+      if (code == 200) {
+        AppNotice.show(title: '提示', content: '操作成功');
+      } else if (msg != null) {
+        AppNotice.show(title: '提示', content: msg.toString());
+      }
+    } catch (e) {
+      print("Reset failed: $e");
+    }
   }
 
   static Future<void> submitManualHeatingTcp({
@@ -219,49 +112,30 @@ class Api {
     final ht = hotTime ?? 0;
     final iset = iSet ?? 0;
     recordRequestLog(
-        type: 'Manual Heating',
-        sn: sn,
-        ip: ip,
+      type: 'Manual Heating',
+      sn: sn,
+      ip: ip,
+      port: port,
+      extra: 'heatingOn=$op, hotTime=$ht, iSet=$iset',
+    );
+
+    try {
+      final res = await WebSocketManager().sendCommand(
+        host: ip,
         port: port,
-        extra: 'heatingOn=$op, hotTime=$ht, iSet=$iset');
-    final mgr = WebSocketManager();
-    await mgr.connectTcp(ip, port, timeout: const Duration(seconds: 5));
-    final completer = Completer<void>();
-    late StreamSubscription<String> sub;
-    sub = mgr.stream.listen((event) {
-      try {
-        final obj = json.decode(event);
-        if (obj is Map<String, dynamic>) {
-          final cmdVal = obj['cmd'];
-          final cmdStr = cmdVal is String ? cmdVal : '$cmdVal';
-          if (cmdStr == 'hot_detail') {
-            final rawCode = obj['code'];
-            final code =
-                rawCode is int ? rawCode : int.tryParse('$rawCode') ?? 0;
-            final msg = obj['message'] ?? obj['messge'];
-            recordRequestLog(
-                type: 'Heating Response',
-                sn: sn,
-                ip: ip,
-                port: port,
-                extra: 'Code: $code, Msg: $msg');
-            if (code == 200) {
-              AppNotice.show(title: '提示', content: '操作成功');
-            } else {
-              final m = msg is String ? msg : null;
-              if (m != null && m.isNotEmpty) {
-                AppNotice.show(title: '提示', content: m);
-              }
-            }
-            sub.cancel();
-            completer.complete();
-          }
-        }
-      } catch (_) {}
-    });
-    mgr.sendLine("hot sn=$sn heatingOn=$op hotTime=$ht iSet=$iset\r\n");
-    print("请求 hot sn=$sn heatingOn=$op hotTime=$ht iSet=$iset\r\n");
-    await completer.future;
+        cmd: 'hot_detail',
+        line: 'hot sn=$sn heatingOn=$op hotTime=$ht iSet=$iset',
+      );
+      final code = res['code'] ?? 0;
+      final msg = res['message'] ?? res['messge'];
+      if (code == 200) {
+        AppNotice.show(title: '提示', content: '操作成功');
+      } else if (msg != null) {
+        AppNotice.show(title: '提示', content: msg.toString());
+      }
+    } catch (e) {
+      print("Manual heating failed: $e");
+    }
   }
 
   static Future<void> switchModeTcp({
@@ -271,50 +145,33 @@ class Api {
     required int mode,
   }) async {
     recordRequestLog(
-        type: 'Switch Mode', sn: sn, ip: ip, port: port, extra: 'mode=$mode');
-    final mgr = WebSocketManager();
-    await mgr.connectTcp(ip, port, timeout: const Duration(seconds: 5));
-    final completer = Completer<void>();
-    late StreamSubscription<String> sub;
-    sub = mgr.stream.listen((event) {
-      try {
-        final obj = json.decode(event);
-        if (obj is Map<String, dynamic>) {
-          final cmdVal = obj['cmd'];
-          final cmdStr = cmdVal is String ? cmdVal : '$cmdVal';
-          if (cmdStr == 'mode_detail') {
-            final rawCode = obj['code'];
-            final code =
-                rawCode is int ? rawCode : int.tryParse('$rawCode') ?? 0;
-            final msg = obj['message'] ?? obj['messge'];
-            recordRequestLog(
-                type: 'Mode Response',
-                sn: sn,
-                ip: ip,
-                port: port,
-                extra: 'Code: $code, Msg: $msg');
-            if (code == 200) {
-              AppNotice.show(title: '提示', content: '操作成功');
-            } else {
-              final m = msg is String ? msg : null;
-              if (m != null && m.isNotEmpty) {
-                AppNotice.show(title: '提示', content: m);
-              }
-            }
-            sub.cancel();
-            completer.complete();
-          }
-        }
-      } catch (_) {}
-    });
-    mgr.sendLine("mode sn=$sn ctrl=$mode\r\n");
-    print("请求 mode sn=$sn ctrl=$mode\r\n");
-    await completer.future;
+      type: 'Switch Mode',
+      sn: sn,
+      ip: ip,
+      port: port,
+      extra: 'mode=$mode',
+    );
+
+    try {
+      final res = await WebSocketManager().sendCommand(
+        host: ip,
+        port: port,
+        cmd: 'mode_detail',
+        line: 'mode sn=$sn ctrl=$mode',
+      );
+      final code = res['code'] ?? 0;
+      final msg = res['message'] ?? res['messge'];
+      if (code == 200) {
+        AppNotice.show(title: '提示', content: '操作成功');
+      } else if (msg != null) {
+        AppNotice.show(title: '提示', content: msg.toString());
+      }
+    } catch (e) {
+      print("Switch mode failed: $e");
+    }
   }
 
-  static Future<void> syncClockTcp({
-    DateTime? time,
-  }) async {
+  static Future<void> syncClockTcp({DateTime? time}) async {
     final devs = await AppDatabase.allDevices();
     final now = time ?? DateTime.now();
     final y = now.year;
@@ -323,7 +180,6 @@ class Api {
     final h = now.hour;
     final min = now.minute;
     final s = now.second;
-    final mgr = WebSocketManager();
 
     for (final dev in devs) {
       final sn = (dev['sn'] as String?) ?? '';
@@ -331,27 +187,32 @@ class Api {
       final port = (dev['port'] as int?) ?? 0;
       if (ip.isEmpty || port == 0) continue;
 
+      recordRequestLog(
+        type: 'Sync Clock',
+        sn: sn,
+        ip: ip,
+        port: port,
+        extra: 'Time: $y-$m-$d $h:$min:$s',
+      );
+
       try {
-        recordRequestLog(
-            type: 'Sync Clock',
-            sn: sn,
-            ip: ip,
-            port: port,
-            extra: 'Time: $y-$m-$d $h:$min:$s');
-        await mgr.connectTcp(ip, port, timeout: const Duration(seconds: 3));
-        mgr.sendLine(
-            "clock  year=$y month=$m day=$d hour=$h minute=$min second=$s\r\n");
-        print("请求设备 $sn ($ip:$port) clock");
-        // 这里不等待响应，直接处理下一个设备
+        // 发送 clock 指令，不等待响应即可
+        await WebSocketManager().sendCommand(
+          host: ip,
+          port: port,
+          cmd: 'clock',
+          line: 'clock year=$y month=$m day=$d hour=$h minute=$min second=$s',
+        );
         await Future.delayed(const Duration(milliseconds: 200));
       } catch (e) {
-        print("同步设备 $sn 时间失败: $e");
+        print("Sync device $sn failed: $e");
         recordRequestLog(
-            type: 'Sync Clock Failed',
-            sn: sn,
-            ip: ip,
-            port: port,
-            extra: 'Error: $e');
+          type: 'Sync Clock Failed',
+          sn: sn,
+          ip: ip,
+          port: port,
+          extra: 'Error: $e',
+        );
       }
     }
   }
