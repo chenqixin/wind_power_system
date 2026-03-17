@@ -14,6 +14,7 @@ import 'dart:io';
 
 import 'package:wind_power_system/view/notice_dialog.dart';
 import 'package:wind_power_system/core/utils/print_utils.dart';
+import 'package:wind_power_system/core/utils/fileutils.dart';
 import 'package:wind_power_system/network/socket/web_socket_manager.dart';
 
 //（每台设备的长连接 + 请求队列 + 心跳）
@@ -48,13 +49,18 @@ class DeviceConnection {
   }
 
   Future<void> connect() async {
-    if (connected) return;
+    if (connected) {
+      _log("connect skipped: already connected");
+      return;
+    }
 
     if (_connectCompleter != null) {
+      _log("connect joined existing request");
       return _connectCompleter!.future;
     }
 
     _connectCompleter = Completer<void>();
+    _log("connect start: $host:$port");
 
     try {
       _socket = await Socket.connect(
@@ -77,11 +83,13 @@ class DeviceConnection {
       _startHeartbeat();
 
       print("TCP connected $host:$port");
+      _log("TCP connected success");
 
       _connectCompleter?.complete();
       _connectCompleter = null;
     } catch (e) {
       print("connect fail $host:$port $e");
+      _log("connect fail: $e");
 
       _connectCompleter?.completeError(e);
       _connectCompleter = null;
@@ -91,6 +99,13 @@ class DeviceConnection {
       // 让调用方知道连接失败了，而不是默默吞掉异常
       rethrow;
     }
+  }
+
+  void _log(String msg) {
+    // 记录到 request_log.txt，方便调试
+    // 使用 appendToFile 之前确保引入了 print_utils.dart
+    final time = DateTime.now().toString().substring(0, 19);
+    appendToFile("request_log.txt", "[$time] [$host:$port] $msg\n");
   }
 
   /// TCP 数据接收
@@ -162,6 +177,7 @@ class DeviceConnection {
     _heartbeatTimer?.cancel();
 
     print("TCP closed $host:$port");
+    _log("TCP closed by server/remote");
 
     _scheduleReconnect();
   }
@@ -171,6 +187,7 @@ class DeviceConnection {
     _heartbeatTimer?.cancel();
 
     print("TCP error $host:$port $e");
+    _log("TCP error: $e");
 
     _scheduleReconnect();
   }
