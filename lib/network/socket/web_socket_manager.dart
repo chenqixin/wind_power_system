@@ -30,23 +30,27 @@ class WebSocketManager {
 
     var conn = _connections[key];
 
-    if (conn != null && conn.connected) {
-      conn.touch();
-      return conn;
+    if (conn == null) {
+      /// LRU 回收
+      if (_connections.length >= maxConnections) {
+        final oldest = _connections.values
+            .reduce((a, b) => a.lastUsed.isBefore(b.lastUsed) ? a : b);
+        oldest.close();
+        _connections.remove(_key(oldest.host, oldest.port));
+      }
+
+      conn = DeviceConnection(host, port, this);
+      _connections[key] = conn;
     }
 
-    /// LRU 回收
-    if (_connections.length >= maxConnections) {
-      final oldest = _connections.values.reduce((a, b) =>
-      a.lastUsed.isBefore(b.lastUsed) ? a : b);
-      oldest.close();
-      _connections.remove(_key(oldest.host, oldest.port));
+    conn.touch();
+
+    try {
+      await conn.connect();
+    } catch (e) {
+      // 连接失败，上层处理
+      rethrow;
     }
-
-    conn = DeviceConnection(host, port, this);
-    _connections[key] = conn;
-
-    await conn.connect();
 
     return conn;
   }
@@ -60,6 +64,19 @@ class WebSocketManager {
   }) async {
     final conn = await getConnection(host, port);
     return conn.send(cmd, line, timeout: timeout);
+  }
+
+  Future<void> sendCommandNoWait({
+    required String host,
+    required int port,
+    required String line,
+  }) async {
+    try {
+      final conn = await getConnection(host, port);
+      conn.sendNoWait(line);
+    } catch (e) {
+      print("sendNoWait error: $e");
+    }
   }
 
   void disconnectDevice(String host, int port) {

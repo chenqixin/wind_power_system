@@ -4,6 +4,7 @@ import 'package:wind_power_system/core/utils/print_utils.dart';
 import 'package:wind_power_system/view/notice_dialog.dart';
 import 'package:wind_power_system/network/socket/web_socket_manager.dart';
 import 'package:wind_power_system/db/app_database.dart';
+
 class Api {
   static Future<void> requestDevicePolling({
     required String sn,
@@ -16,7 +17,8 @@ class Api {
       await WebSocketManager().getConnection(ip, port);
     } catch (e) {
       print("Polling failed: $e");
-      recordRequestLog(type: 'Polling Failed', sn: sn, ip: ip, port: port, extra: '$e');
+      recordRequestLog(
+          type: 'Polling Failed', sn: sn, ip: ip, port: port, extra: '$e');
     }
   }
 
@@ -27,7 +29,6 @@ class Api {
     required Function(dynamic data) successCallback,
     Function(int code, String? msg)? failCallback,
   }) async {
-
     try {
       final res = await WebSocketManager().sendCommand(
         host: ip,
@@ -197,13 +198,12 @@ class Api {
 
       try {
         // 发送 clock 指令，不等待响应即可
-        await WebSocketManager().sendCommand(
+        await WebSocketManager().sendCommandNoWait(
           host: ip,
           port: port,
-          cmd: 'clock',
           line: 'clock year=$y month=$m day=$d hour=$h minute=$min second=$s',
         );
-        await Future.delayed(const Duration(milliseconds: 200));
+        // await Future.delayed(const Duration(milliseconds: 200));
       } catch (e) {
         print("Sync device $sn failed: $e");
         recordRequestLog(

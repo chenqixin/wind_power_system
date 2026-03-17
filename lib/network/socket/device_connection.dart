@@ -16,10 +16,8 @@ import 'package:wind_power_system/view/notice_dialog.dart';
 import 'package:wind_power_system/core/utils/print_utils.dart';
 import 'package:wind_power_system/network/socket/web_socket_manager.dart';
 
-
 //（每台设备的长连接 + 请求队列 + 心跳）
 class DeviceConnection {
-
   final String host;
   final int port;
 
@@ -36,6 +34,8 @@ class DeviceConnection {
   Timer? _heartbeatTimer;
   Timer? _reconnectTimer;
 
+  Completer<void>? _connectCompleter;
+
   DateTime lastUsed = DateTime.now();
 
   /// 解决 TCP 粘包/半包
@@ -48,11 +48,15 @@ class DeviceConnection {
   }
 
   Future<void> connect() async {
-
     if (connected) return;
 
-    try {
+    if (_connectCompleter != null) {
+      return _connectCompleter!.future;
+    }
 
+    _connectCompleter = Completer<void>();
+
+    try {
       _socket = await Socket.connect(
         host,
         port,
@@ -74,19 +78,23 @@ class DeviceConnection {
 
       print("TCP connected $host:$port");
 
+      _connectCompleter?.complete();
+      _connectCompleter = null;
     } catch (e) {
-
       print("connect fail $host:$port $e");
+
+      _connectCompleter?.completeError(e);
+      _connectCompleter = null;
 
       _scheduleReconnect();
 
+      // 让调用方知道连接失败了，而不是默默吞掉异常
+      rethrow;
     }
-
   }
 
   /// TCP 数据接收
   void _onData(List<int> data) {
-
     /// 把数据拼接到 buffer
     _buffer += utf8.decode(data);
 
@@ -94,7 +102,6 @@ class DeviceConnection {
 
     /// 按换行符拆包
     while ((index = _buffer.indexOf('\n')) != -1) {
-
       final line = _buffer.substring(0, index).trim();
 
       _buffer = _buffer.substring(index + 1);
@@ -102,39 +109,28 @@ class DeviceConnection {
       if (line.isEmpty) continue;
 
       try {
-
         final obj = json.decode(line);
 
         final cmd = obj["cmd"]?.toString() ?? "";
 
         /// 请求响应
         if (_pending.containsKey(cmd)) {
-
           _pending.remove(cmd)?.complete(obj);
-
         } else {
-
           /// 设备主动推送
           manager.emitPush(obj);
-
         }
-
       } catch (e) {
-
         print("json parse error: $e");
-
       }
-
     }
-
   }
 
   Future<dynamic> send(
-      String cmd,
-      String line, {
-        Duration timeout = const Duration(seconds: 5),
-      }) {
-
+    String cmd,
+    String line, {
+    Duration timeout = const Duration(seconds: 5),
+  }) {
     if (!connected || _socket == null) {
       throw Exception("device not connected");
     }
@@ -148,71 +144,60 @@ class DeviceConnection {
     touch();
 
     return completer.future.timeout(timeout, onTimeout: () {
-
       _pending.remove(cmd);
 
       throw Exception("timeout $cmd");
-
     });
+  }
 
+  void sendNoWait(String line) {
+    if (connected && _socket != null) {
+      _socket!.write("$line\n");
+      touch();
+    }
   }
 
   void _onDone() {
-
     connected = false;
+    _heartbeatTimer?.cancel();
 
     print("TCP closed $host:$port");
 
     _scheduleReconnect();
-
   }
 
   void _onError(e) {
-
     connected = false;
+    _heartbeatTimer?.cancel();
 
     print("TCP error $host:$port $e");
 
     _scheduleReconnect();
-
   }
 
   void _scheduleReconnect() {
-
     if (_reconnectTimer != null) return;
 
     _reconnectTimer = Timer(const Duration(seconds: 3), () async {
-
       _reconnectTimer = null;
 
       if (!connected) {
-
         await connect();
-
       }
-
     });
-
   }
 
   void _startHeartbeat() {
-
     _heartbeatTimer?.cancel();
 
     _heartbeatTimer = Timer.periodic(const Duration(seconds: 5), (_) {
-
       if (connected && _socket != null) {
-
         _socket!.write('{"cmd":"ping"}\n');
-
       }
-
     });
-
   }
 
   void close() {
-
     connected = false;
 
     _heartbeatTimer?.cancel();
@@ -223,7 +208,5 @@ class DeviceConnection {
     _socket?.destroy();
 
     _pending.clear();
-
   }
-
 }
