@@ -11,14 +11,13 @@ void main() async {
 
   // 配置窗口参数
   WindowOptions windowOptions = const WindowOptions(
-    minimumSize: Size(1200, 800), // 最小窗口
-    // size: Size(1280, 900),     // 如果想固定启动大小加上
     backgroundColor: Colors.transparent,
     skipTaskbar: false,
   );
   windowManager.waitUntilReadyToShow(windowOptions, () async {
     await windowManager.show(); // 显示窗口
-    await windowManager.maximize(); // 启动自动最大化
+    await windowManager.setFullScreen(true);
+    await windowManager.setResizable(false);
   });
   runApp(const MyApp());
 }

@@ -20,7 +20,7 @@ class _GlobalHeaderState extends State<GlobalHeader> {
   late DateTime _now;
   late TextEditingController _titleController;
   bool _editingTitle = false;
-  String _headerTitle = '广西国电投坵坪风电场叶片除冰系统';
+  String _headerTitle = '风电场叶片除冰系统';
 
   @override
   void initState() {
