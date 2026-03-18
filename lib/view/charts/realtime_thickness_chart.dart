@@ -9,12 +9,18 @@ class RealtimeThicknessChart extends StatefulWidget {
   final Future<List<double>> Function()? onRequest;
   final int refreshSeconds;
   final int maxPoints;
+  final double minimum;
+  final double maximum;
+  final double interval;
 
   const RealtimeThicknessChart({
     super.key,
     this.onRequest,
     this.refreshSeconds = 5,
     this.maxPoints = 180,
+    this.minimum = 0,
+    this.maximum = 20,
+    this.interval = 5,
   });
 
   @override
@@ -74,8 +80,11 @@ class _RealtimeThicknessChartState extends State<RealtimeThicknessChart> {
         return;
       }
       if (values.length < 3) return;
-      final p = _Point(now, values[0].clamp(0, 20), values[1].clamp(0, 20),
-          values[2].clamp(0, 20));
+      final p = _Point(
+          now,
+          values[0].clamp(widget.minimum, widget.maximum),
+          values[1].clamp(widget.minimum, widget.maximum),
+          values[2].clamp(widget.minimum, widget.maximum));
       _data.add(p);
       List<int> removed = const [];
       if (_data.length > widget.maxPoints) {
@@ -133,39 +142,30 @@ class _RealtimeThicknessChartState extends State<RealtimeThicknessChart> {
         edgeLabelPlacement: EdgeLabelPlacement.shift,
       ),
       primaryYAxis: NumericAxis(
-        minimum: 0,
-        maximum: 20,
-        interval: 5,
+        minimum: widget.minimum,
+        maximum: widget.maximum,
+        interval: widget.interval,
         majorGridLines: const MajorGridLines(width: 0),
         axisLine: const AxisLine(width: 1, dashArray: <double>[4, 4]),
         majorTickLines: const MajorTickLines(size: 0, width: 0),
         minorTickLines: const MinorTickLines(size: 0, width: 0),
-        plotBands: <PlotBand>[
-          PlotBand(
-              start: 5,
-              end: 5,
-              borderWidth: 0.5,
-              borderColor: const Color(0xFFE0E0E0),
-              dashArray: const <double>[4, 4],
-              shouldRenderAboveSeries: true),
-          PlotBand(
-              start: 10,
-              end: 10,
-              borderWidth: 0.5,
-              borderColor: const Color(0xFFE0E0E0),
-              dashArray: const <double>[4, 4],
-              shouldRenderAboveSeries: true),
-          PlotBand(
-              start: 15,
-              end: 15,
-              borderWidth: 0.5,
-              borderColor: const Color(0xFFE0E0E0),
-              dashArray: const <double>[4, 4],
-              shouldRenderAboveSeries: true),
+        plotBands: [
+          for (double i = widget.minimum + widget.interval;
+              i < widget.maximum;
+              i += widget.interval)
+            PlotBand(
+                start: i,
+                end: i,
+                borderWidth: 0.5,
+                borderColor: const Color(0xFFE0E0E0),
+                dashArray: const <double>[4, 4],
+                shouldRenderAboveSeries: true),
         ],
         axisLabelFormatter: (details) {
           final v = details.value;
-          final wanted = v == 0 || v == 5 || v == 10 || v == 15 || v == 20;
+          final remainder = (v - widget.minimum).abs() % widget.interval;
+          final wanted =
+              remainder < 0.0001 || (widget.interval - remainder) < 0.0001;
           return ChartAxisLabel(wanted ? v.toStringAsFixed(0) : '',
               const TextStyle(fontSize: 10));
         },

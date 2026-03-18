@@ -14,10 +14,16 @@ class SecureStorage {
   static const String _kUsername = 'username';
   static const String _kPassword = 'password';
   static const String _kRole = 'role';
+  static const String _kHeaderTitle = 'header_title';
 
   static Future<String> _filePath() async {
     final dir = await getApplicationDocumentsDirectory();
     return p.join(dir.path, 'login.json');
+  }
+
+  static Future<String> _headerFilePath() async {
+    final dir = await getApplicationDocumentsDirectory();
+    return p.join(dir.path, 'header.json');
   }
 
   static String _hash(String s) =>
@@ -148,4 +154,62 @@ class SecureStorage {
   }
 
   static Future<Map<String, String>> readAll() => _storage.readAll();
+
+  static Future<bool> saveHeaderTitle(String title) async {
+    try {
+      await _storage.write(key: _kHeaderTitle, value: title);
+      final v = await _storage.read(key: _kHeaderTitle);
+      final ok = v == title;
+      if (!ok) {
+        recordLogs('secure_storage mismatch: header_title=$v');
+        final path = await _headerFilePath();
+        final f = File(path);
+        await f.writeAsString(jsonEncode({'header_title': title}));
+        final back = await f.readAsString();
+        final m = jsonDecode(back) as Map<String, dynamic>;
+        return m['header_title'] == title;
+      }
+      return ok;
+    } on PlatformException catch (e) {
+      recordLogs('secure_storage platform error: code=${e.code} message=${e.message}');
+      try {
+        final path = await _headerFilePath();
+        final f = File(path);
+        await f.writeAsString(jsonEncode({'header_title': title}));
+        final back = await f.readAsString();
+        final m = jsonDecode(back) as Map<String, dynamic>;
+        return m['header_title'] == title;
+      } catch (_) {
+        return false;
+      }
+    } catch (e) {
+      recordLogs('secure_storage error: $e');
+      try {
+        final path = await _headerFilePath();
+        final f = File(path);
+        await f.writeAsString(jsonEncode({'header_title': title}));
+        final back = await f.readAsString();
+        final m = jsonDecode(back) as Map<String, dynamic>;
+        return m['header_title'] == title;
+      } catch (_) {
+        return false;
+      }
+    }
+  }
+
+  static Future<String?> headerTitle() async {
+    try {
+      final v = await _storage.read(key: _kHeaderTitle);
+      if (v != null) return v;
+    } catch (_) {}
+    try {
+      final f = File(await _headerFilePath());
+      if (!await f.exists()) return null;
+      final m = jsonDecode(await f.readAsString()) as Map<String, dynamic>;
+      final v = m['header_title'];
+      return v is String ? v : '$v';
+    } catch (_) {
+      return null;
+    }
+  }
 }

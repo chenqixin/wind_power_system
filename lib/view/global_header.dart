@@ -18,11 +18,15 @@ class GlobalHeader extends StatefulWidget {
 class _GlobalHeaderState extends State<GlobalHeader> {
   late Timer _timer;
   late DateTime _now;
+  late TextEditingController _titleController;
+  bool _editingTitle = false;
+  String _headerTitle = '广西国电投坵坪风电场叶片除冰系统';
 
   @override
   void initState() {
     super.initState();
     _now = DateTime.now();
+    _titleController = TextEditingController(text: _headerTitle);
 
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       setState(() {
@@ -30,11 +34,13 @@ class _GlobalHeaderState extends State<GlobalHeader> {
       });
     });
     _initLoginState();
+    _initHeaderTitle();
   }
 
   @override
   void dispose() {
     _timer.cancel();
+    _titleController.dispose();
     super.dispose();
   }
 
@@ -56,13 +62,52 @@ class _GlobalHeaderState extends State<GlobalHeader> {
         padding: const EdgeInsets.symmetric(horizontal: 24),
         child: Row(
           children: [
-            Text(
-              '广西国电投坵坪风电场叶片除冰系统',
-              style: TextStyle(
-                fontSize: 30,
-                fontWeight: FontWeight.w600,
-                color: HexColor('#133F72'),
-              ),
+            GestureDetector(
+              onDoubleTap: () async {
+                if (_editingTitle) {
+                  final t = _titleController.text.trim();
+                  if (t.isNotEmpty) {
+                    final ok = await SecureStorage.saveHeaderTitle(t);
+                    if (ok) {
+                      _headerTitle = t;
+                      _editingTitle = false;
+                      if (mounted) setState(() {});
+                      AppNotice.show(title: '提示', content: '标题已保存');
+                    } else {
+                      AppNotice.show(title: '提示', content: '保存失败');
+                    }
+                  }
+                } else {
+                  _titleController.text = _headerTitle;
+                  _editingTitle = true;
+                  if (mounted) setState(() {});
+                }
+              },
+              child: _editingTitle
+                  ? SizedBox(
+                      width: 700,
+                      child: TextField(
+                        controller: _titleController,
+                        style: TextStyle(
+                          fontSize: 30,
+                          fontWeight: FontWeight.w600,
+                          color: HexColor('#133F72'),
+                        ),
+                        decoration: const InputDecoration(
+                          isDense: true,
+                          border: InputBorder.none,
+                          contentPadding: EdgeInsets.zero,
+                        ),
+                      ),
+                    )
+                  : Text(
+                      _headerTitle,
+                      style: TextStyle(
+                        fontSize: 30,
+                        fontWeight: FontWeight.w600,
+                        color: HexColor('#133F72'),
+                      ),
+                    ),
             ),
             const Spacer(),
             Text(_format(_now)).simpleStyle(20, HexColor('#133F72')),
@@ -122,6 +167,15 @@ class _GlobalHeaderState extends State<GlobalHeader> {
       UserInfo.userName = u;
       UserInfo.password = p;
       UserInfo.role = r;
+      if (mounted) setState(() {});
+    }
+  }
+
+  void _initHeaderTitle() async {
+    final t = await SecureStorage.headerTitle();
+    if (t != null && t.trim().isNotEmpty) {
+      _headerTitle = t.trim();
+      _titleController.text = _headerTitle;
       if (mounted) setState(() {});
     }
   }

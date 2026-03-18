@@ -292,6 +292,9 @@ class _DeviceRealTimePageState extends State<DeviceRealTimePage> {
                                         child: RealtimeThicknessChart(
                                           onRequest: () =>
                                               _requestBladeThickness(1, 1),
+                                          minimum: 0,
+                                          maximum: 30,
+                                          interval: 5,
                                         ),
                                       ),
                                     )
@@ -329,6 +332,9 @@ class _DeviceRealTimePageState extends State<DeviceRealTimePage> {
                                         child: RealtimeThicknessChart(
                                           onRequest: () =>
                                               _requestBladeThickness(2, 1),
+                                          minimum: 0,
+                                          maximum: 30,
+                                          interval: 5,
                                         ),
                                       ),
                                     )
@@ -367,6 +373,9 @@ class _DeviceRealTimePageState extends State<DeviceRealTimePage> {
                                         child: RealtimeThicknessChart(
                                           onRequest: () =>
                                               _requestBladeThickness(3, 1),
+                                          minimum: 0,
+                                          maximum: 30,
+                                          interval: 5,
                                         ),
                                       ),
                                     ),
@@ -412,6 +421,9 @@ class _DeviceRealTimePageState extends State<DeviceRealTimePage> {
                                         child: RealtimeThicknessChart(
                                           onRequest: () =>
                                               _requestBladeThickness(1, 2),
+                                          minimum: -30,
+                                          maximum: 80,
+                                          interval: 10,
                                         ),
                                       ),
                                     ),
@@ -450,6 +462,9 @@ class _DeviceRealTimePageState extends State<DeviceRealTimePage> {
                                         child: RealtimeThicknessChart(
                                           onRequest: () =>
                                               _requestBladeThickness(2, 2),
+                                          minimum: -30,
+                                          maximum: 80,
+                                          interval: 10,
                                         ),
                                       ),
                                     ),
@@ -488,6 +503,9 @@ class _DeviceRealTimePageState extends State<DeviceRealTimePage> {
                                         child: RealtimeThicknessChart(
                                           onRequest: () =>
                                               _requestBladeThickness(3, 2),
+                                          minimum: -30,
+                                          maximum: 80,
+                                          interval: 10,
                                         ),
                                       ),
                                     ),
