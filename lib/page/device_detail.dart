@@ -84,7 +84,7 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
       children: [
         Container(width: 4, height: 16, color: AppColors.blue06),
         const SizedBox(width: 12),
-        Text(text).simpleStyle(16, AppColors.blue06, isBold: true),
+        Text(text).simpleStyle(18, AppColors.blue06, isBold: true),
       ],
     );
   }
@@ -135,22 +135,22 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
         color: HexColor('#C1D8F0'),
         borderRadius: BorderRadius.circular(6),
       ),
-      padding: EdgeInsets.all(AppScreen.adaptiveFontSize(context, 12)),
+      padding: EdgeInsets.all(AppScreen.adaptiveFontSize(context, 14)),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(value,
               style: TextStyle(
-                  fontSize: AppScreen.adaptiveFontSize(context, 30),
+                  fontSize: AppScreen.adaptiveFontSize(context, 32),
                   fontWeight: FontWeight.w500,
                   color: AppColors.blue0C)),
-          SizedBox(height: AppScreen.adaptiveFontSize(context, 6)),
+          SizedBox(height: AppScreen.adaptiveFontSize(context, 8)),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text(title).simpleStyle(14, AppColors.blue133),
+              Text(title).simpleStyle(16, AppColors.blue133),
               const SizedBox(width: 4),
-              Text(unit).simpleStyle(12, HexColor('#133F72')),
+              Text(unit).simpleStyle(14, HexColor('#133F72')),
             ],
           ),
         ],
@@ -189,12 +189,12 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       child: Row(
         children: [
-          Expanded(child: Text(title).simpleStyle(12, AppColors.blue133)),
+          Expanded(child: Text(title).simpleStyle(14, AppColors.blue133)),
           Row(
             children: [
-              Text(value).simpleStyle(13, AppColors.blue06, isBold: true),
+              Text(value).simpleStyle(15, AppColors.blue06, isBold: true),
               const SizedBox(width: 6),
-              Text(unit).simpleStyle(12, HexColor('#133F72')),
+              Text(unit).simpleStyle(14, HexColor('#133F72')),
             ],
           )
         ],
@@ -241,7 +241,7 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
         child: Row(
           children: [
             SizedBox(width: 12),
-            Text(name).simpleStyle(14, AppColors.blue06, isBold: true),
+            Text(name).simpleStyle(16, AppColors.blue06, isBold: true),
             SizedBox(width: 12),
             Expanded(
               flex: 180,
@@ -266,7 +266,7 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
                               })(), width: 12, height: 12),
                               //Image.asset('ic_jr.png'.imagePath, width: 12, height: 12),
                               const SizedBox(width: 8),
-                              Text('加热状态').simpleStyle(14, HexColor('#051F34')),
+                              Text('加热状态').simpleStyle(16, HexColor('#051F34')),
                             ])),
                   ),
                   SizedBox(height: 8),
@@ -278,14 +278,14 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
                         ),
                         padding: const EdgeInsets.symmetric(horizontal: 12),
                         child: Row(children: [
-                          Text('功率：').simpleStyle(14, HexColor('#051F34')),
+                          Text('功率：').simpleStyle(16, HexColor('#051F34')),
                           Spacer(),
                           Text(bladePowerValueUnit(detail?.winddata, index + 1)
                                   .value)
-                              .simpleStyle(12, AppColors.blue06, isBold: true),
+                              .simpleStyle(14, AppColors.blue06, isBold: true),
                           Text(bladePowerValueUnit(detail?.winddata, index + 1)
                                   .unit)
-                              .simpleStyle(10, AppColors.blue133),
+                              .simpleStyle(12, AppColors.blue133),
                         ])),
                   ),
                 ],
@@ -329,7 +329,7 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
                         : partIndex == 2
                             ? '叶\n中'
                             : '叶\n尖')
-                    .simpleStyle(12, HexColor('#051F34')),
+                      .simpleStyle(14, HexColor('#051F34')),
               ),
             ),
             Expanded(
@@ -340,11 +340,11 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
                   Expanded(
                     child: Row(
                       children: [
-                        Text('温  度：').simpleStyle(11, HexColor('#051F34')),
+                          Text('温  度：').simpleStyle(13, HexColor('#051F34')),
                         Spacer(),
                         Text(_partTempValue(bladeIndex, partIndex))
-                            .simpleStyle(11, AppColors.blue06, isBold: true),
-                        Text('℃').simpleStyle(12, HexColor('#133F72')),
+                              .simpleStyle(13, AppColors.blue06, isBold: true),
+                          Text('℃').simpleStyle(14, HexColor('#133F72')),
                       ],
                     ),
                   ),
@@ -355,10 +355,10 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
                   Expanded(
                     child: Row(
                       children: [
-                        Text('厚度等级：').simpleStyle(11, HexColor('#051F34')),
+                          Text('厚度等级：').simpleStyle(13, HexColor('#051F34')),
                         Spacer(),
                         Text(_partTickValue(bladeIndex, partIndex))
-                            .simpleStyle(11, AppColors.blue06, isBold: true),
+                              .simpleStyle(13, AppColors.blue06, isBold: true),
                       ],
                     ),
                   ),
@@ -366,7 +366,7 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
                   Expanded(
                     child: Row(
                       children: [
-                        Text('运动状态：').simpleStyle(11, HexColor('#051F34')),
+                          Text('运动状态：').simpleStyle(13, HexColor('#051F34')),
                         Spacer(),
                         Image.asset(
                             (_partRunOn(bladeIndex, partIndex)
@@ -474,16 +474,16 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
               Icon(Icons.radio_button_checked,
                   size: 18, color: Colors.grey[400]),
               const SizedBox(width: 6),
-              Text('加热状态').simpleStyle(14, AppColors.blue133),
+              Text('加热状态').simpleStyle(16, AppColors.blue133),
             ],
           ),
           const Spacer(),
           Row(
             children: [
-              Text('功率：').simpleStyle(14, AppColors.blue133),
-              Text('10').simpleStyle(16, AppColors.blue06, isBold: true),
+              Text('功率：').simpleStyle(16, AppColors.blue133),
+              Text('10').simpleStyle(18, AppColors.blue06, isBold: true),
               const SizedBox(width: 4),
-              Text('KW').simpleStyle(12, HexColor('#133F72')),
+              Text('KW').simpleStyle(14, HexColor('#133F72')),
             ],
           )
         ],
@@ -510,7 +510,7 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
       ),
       padding: const EdgeInsets.symmetric(vertical: 10),
       alignment: Alignment.center,
-      child: Text(text).simpleStyle(14, AppColors.blue133),
+      child: Text(text).simpleStyle(16, AppColors.blue133),
     );
   }
 
@@ -530,23 +530,23 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
         children: [
           Row(
             children: [
-              Text('温    度：').simpleStyle(14, AppColors.blue133),
-              Text('26').simpleStyle(16, AppColors.blue06, isBold: true),
+              Text('温    度：').simpleStyle(16, AppColors.blue133),
+              Text('26').simpleStyle(18, AppColors.blue06, isBold: true),
               const SizedBox(width: 4),
-              Text('℃').simpleStyle(12, HexColor('#133F72')),
+              Text('℃').simpleStyle(14, HexColor('#133F72')),
             ],
           ),
           const SizedBox(height: 6),
           Row(
             children: [
-              Expanded(child: Text('厚度等级：').simpleStyle(14, AppColors.blue133)),
-              Text('5').simpleStyle(14, AppColors.blue06, isBold: true),
+              Expanded(child: Text('厚度等级：').simpleStyle(16, AppColors.blue133)),
+              Text('5').simpleStyle(16, AppColors.blue06, isBold: true),
             ],
           ),
           const SizedBox(height: 6),
           Row(
             children: [
-              Expanded(child: Text('运动状态：').simpleStyle(14, AppColors.blue133)),
+              Expanded(child: Text('运动状态：').simpleStyle(16, AppColors.blue133)),
               Icon(Icons.circle, size: 10, color: Colors.redAccent),
             ],
           ),
@@ -578,14 +578,14 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
                   ),
                   alignment: Alignment.centerLeft,
                   padding:
-                      EdgeInsets.all(AppScreen.adaptiveFontSize(context, 12)),
+                      EdgeInsets.all(AppScreen.adaptiveFontSize(context, 14)),
                   child: Row(
                     children: [
                       Image.asset('ic_right.png'.imagePath,
                           width: 18, height: 18),
                       const SizedBox(width: 6),
                       Expanded(
-                          child: Text(t).simpleStyle(14, AppColors.blue133)),
+                          child: Text(t).simpleStyle(16, AppColors.blue133)),
                     ],
                   ),
                 ))
@@ -683,7 +683,7 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
   @override
   Widget build(BuildContext context) {
     final textMain = TextStyle(
-      fontSize: AppScreen.adaptiveFontSize(context, 18),
+      fontSize: AppScreen.adaptiveFontSize(context, 20),
       color: AppColors.blue135,
       fontWeight: FontWeight.w600,
     );
@@ -707,7 +707,7 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
                         borderRadius: BorderRadius.circular(8),
                       ),
                       textStyle: TextStyle(
-                        fontSize: AppScreen.adaptiveFontSize(context, 14),
+                        fontSize: AppScreen.adaptiveFontSize(context, 16),
                         color: AppColors.blue133,
                       ),
                     ),
@@ -718,15 +718,15 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
                     itemBuilder: (context) => [
                       PopupMenuItem<String>(
                         value: 'overview',
-                        child: Text('总预览页面').simpleStyle(12, AppColors.blue133),
+                        child: Text('总预览页面').simpleStyle(14, AppColors.blue133),
                       ),
                       PopupMenuItem<String>(
                         value: 'realtime',
-                        child: Text('实时数据').simpleStyle(12, AppColors.blue133),
+                        child: Text('实时数据').simpleStyle(14, AppColors.blue133),
                       ),
                       PopupMenuItem<String>(
                         value: 'history',
-                        child: Text('历史数据').simpleStyle(12, AppColors.blue133),
+                        child: Text('历史数据').simpleStyle(14, AppColors.blue133),
                       ),
                     ],
                     onSelected: (value) {
@@ -761,13 +761,13 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
                         Row(
                           children: [
                             Text('设备编号：00009527')
-                                .simpleStyle(13, AppColors.blue133),
+                                .simpleStyle(15, AppColors.blue133),
                             Spacer(),
                             Text(_tcpConnected
                                     ? '${_ip ?? ""} 连接正常'
                                     : '${_ip ?? ""} 连接失败')
                                 .simpleStyle(
-                                    13,
+                                  15,
                                     _tcpConnected
                                         ? AppColors.blue06
                                         : AppColors.textDB),
@@ -792,7 +792,7 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
                                   : Image.asset('ic_jr_guan.png'.imagePath,
                                       width: 20, height: 20),
                               SizedBox(width: 8),
-                              Text('加热状态').simpleStyle(13, AppColors.blue133,
+                          Text('加热状态').simpleStyle(15, AppColors.blue133,
                                   isBold: true),
                               Spacer(),
                               Visibility(
@@ -803,10 +803,10 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
                                   child: Row(
                                     children: [
                                       Text('加热剩余时间：').simpleStyle(
-                                          13, AppColors.blue133,
+                                        15, AppColors.blue133,
                                           isBold: true),
                                       Text(_formatHotTime(_remainingHotTime))
-                                          .simpleStyle(13, AppColors.blue06,
+                                        .simpleStyle(15, AppColors.blue06,
                                               isBold: true),
                                     ],
                                   ))
@@ -837,7 +837,7 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
                                       width: 8,
                                     ),
                                     Text('手动').simpleStyle(
-                                      11,
+                                      13,
                                       HexColor('#051F34'),
                                     ),
                                   ],
@@ -866,7 +866,7 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
                                       width: 8,
                                     ),
                                     Text('自动').simpleStyle(
-                                      11,
+                                      13,
                                       HexColor('#051F34'),
                                     ),
                                   ],
@@ -895,7 +895,7 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
                                       width: 8,
                                     ),
                                     Text('急停').simpleStyle(
-                                      11,
+                                      13,
                                       HexColor('#051F34'),
                                     ),
                                   ],
@@ -924,7 +924,7 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
                                       width: 8,
                                     ),
                                     Text('复位').simpleStyle(
-                                      11,
+                                      13,
                                       HexColor('#051F34'),
                                     ),
                                   ],
@@ -965,7 +965,7 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
                                       borderRadius: BorderRadius.circular(6)),
                                   alignment: Alignment.center,
                                   child: Text('手动').simpleStyle(
-                                      14, AppColors.white,
+                                      16, AppColors.white,
                                       isBold: true),
                                 ),
                               ),
@@ -1000,7 +1000,7 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
                                       borderRadius: BorderRadius.circular(6)),
                                   alignment: Alignment.center,
                                   child: Text('自动').simpleStyle(
-                                      14, AppColors.white,
+                                      16, AppColors.white,
                                       isBold: true),
                                 ),
                               ),
@@ -1036,7 +1036,7 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
                                       borderRadius: BorderRadius.circular(6)),
                                   alignment: Alignment.center,
                                   child: Text('急停').simpleStyle(
-                                      14, AppColors.white,
+                                      16, AppColors.white,
                                       isBold: true),
                                 ),
                               ),
@@ -1070,7 +1070,7 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
                                       borderRadius: BorderRadius.circular(6)),
                                   alignment: Alignment.center,
                                   child: Text('复位').simpleStyle(
-                                      14, AppColors.white,
+                                      16, AppColors.white,
                                       isBold: true),
                                 ),
                               ),
@@ -1105,7 +1105,7 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
                                           MainAxisAlignment.start,
                                       children: [
                                         Text('加热开关').simpleStyle(
-                                            14, AppColors.blue133,
+                                            16, AppColors.blue133,
                                             isBold: true),
                                         const SizedBox(width: 18),
                                         InkWell(
@@ -1125,7 +1125,7 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
                                                   height: 12),
                                               SizedBox(width: 2),
                                               Text('开').simpleStyle(
-                                                  12, HexColor('#051F34')),
+                                                  14, HexColor('#051F34')),
                                             ],
                                           ),
                                         ),
@@ -1147,7 +1147,7 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
                                                   height: 12),
                                               SizedBox(width: 2),
                                               Text('关').simpleStyle(
-                                                  12, HexColor('#051F34')),
+                                                  14, HexColor('#051F34')),
                                             ],
                                           ),
                                         ),
@@ -1155,7 +1155,7 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
                                   Spacer(),
                                   Row(children: [
                                     Text('加热时常').simpleStyle(
-                                        14, AppColors.blue133,
+                                        16, AppColors.blue133,
                                         isBold: true),
                                     const SizedBox(width: 12),
                                     Expanded(
@@ -1198,7 +1198,7 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
                                   ]),
                                   Spacer(),
                                   Text('不平衡电流阈值').simpleStyle(
-                                      14, AppColors.blue133,
+                                      16, AppColors.blue133,
                                       isBold: true),
                                   const SizedBox(height: 10),
                                   Row(children: [
@@ -1234,12 +1234,12 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
                                           hintText: '请输入阈值参数',
                                           hintStyle: TextStyle(
                                             color: HexColor('#888888'),
-                                            fontSize: 12,
+                                            fontSize: 14,
                                             fontWeight: FontWeight.normal,
                                           ),
                                         ),
                                         style: TextStyle(
-                                          fontSize: 12,
+                                          fontSize: 14,
                                           fontWeight: FontWeight.normal,
                                           color: AppColors.blue133,
                                         ),
@@ -1280,7 +1280,7 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
                                                 BorderRadius.circular(6)),
                                         alignment: Alignment.center,
                                         child: Text('确认').simpleStyle(
-                                            14, AppColors.white,
+                                            16, AppColors.white,
                                             isBold: true),
                                       ),
                                     )
@@ -1349,13 +1349,13 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
                                                         ? 'ic_jr.png'
                                                         : 'ic_jr_guan.png')
                                                     .imagePath,
-                                                width: 12,
-                                                height: 12),
+                                                width: 14,
+                                                height: 14),
                                             const SizedBox(width: 6),
                                             Expanded(
                                                 child: Text(e.value)
                                                     .simpleStyle(
-                                                        10, AppColors.blue133)),
+                                                        14, AppColors.blue133)),
                                           ],
                                         ),
                                       ))
@@ -1479,7 +1479,7 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
                                             CrossAxisAlignment.center,
                                         children: [
                                           Text('————  除冰控制柜  ———').simpleStyle(
-                                            13,
+                                            15,
                                             AppColors.blue06,
                                           ),
                                           const SizedBox(height: 8),
@@ -1531,14 +1531,14 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
                                                                           ? 'ic_green_cicle.png'
                                                                           : 'ic_jr_guan.png')
                                                                       .imagePath,
-                                                                  width: 12,
-                                                                  height: 12),
+                                                                  width: 14,
+                                                                  height: 14),
                                                               const SizedBox(
                                                                   width: 6),
                                                               Expanded(
                                                                   child: Text(t)
                                                                       .simpleStyle(
-                                                                          10,
+                                                                          14,
                                                                           AppColors
                                                                               .blue133)),
                                                             ],
@@ -1568,7 +1568,7 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
                                             CrossAxisAlignment.center,
                                         children: [
                                           Text('— 除冰控制柜 —').simpleStyle(
-                                            13,
+                                            15,
                                             AppColors.blue06,
                                           ),
                                           const SizedBox(height: 8),
@@ -1587,12 +1587,12 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
                                                               ?.toString() ??
                                                           '-')
                                                       .simpleStyle(
-                                                    35,
+                                                    37,
                                                     AppColors.blue06,
                                                     isBold: true,
                                                   ),
                                                   Text('℃').simpleStyle(
-                                                    15,
+                                                    17,
                                                     HexColor('#051F34'),
                                                   ),
                                                 ],
@@ -1619,7 +1619,7 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
                                             CrossAxisAlignment.center,
                                         children: [
                                           Text('— 软件版本 —').simpleStyle(
-                                            13,
+                                            15,
                                             AppColors.blue06,
                                           ),
                                           const SizedBox(height: 8),
@@ -1669,7 +1669,7 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
                                                             child: Row(
                                                               children: [
                                                                 Text(t).simpleStyle(
-                                                                    10,
+                                                                    12,
                                                                     AppColors
                                                                         .blue133),
                                                                 Spacer(),
@@ -1678,7 +1678,7 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
                                                                         ? 'ZK_95'
                                                                         : 'ZK_9527_01')
                                                                     .simpleStyle(
-                                                                        10,
+                                                                        12,
                                                                         AppColors
                                                                             .blue133),
                                                               ],

@@ -26,6 +26,7 @@ class AppDatabase {
     _db = await databaseFactory.openDatabase(path);
     await _ensureDeviceTable();
     await ensureUserTable();
+    await _ensureDefaultAdmin();
     return _db!;
   }
 
@@ -275,6 +276,19 @@ class AppDatabase {
       await db.execute(usersCreateSql('users'));
     }
   }
+
+  /// 默认管理员账户写入（若不存在）
+  static Future<void> _ensureDefaultAdmin() async {
+    final exist = await userExists('admin');
+    if (exist) return;
+    await insertUser(
+      username: 'admin',
+      role: 2,
+      realName: '主',
+      password: 'abc123456',
+      phone: '17366621184',
+    );
+  }
   //
   // static Future<void> createDevices(int count) async {
   //   final db = await instance();
@@ -390,6 +404,34 @@ class AppDatabase {
     );
   }
 
+  static Future<void> updateDevice({
+    required String originSn,
+    required String sn,
+    required String ip,
+    required int port,
+    required String deviceSn,
+  }) async {
+    final db = await instance();
+    await _ensureDeviceTable();
+    if (originSn != sn) {
+      final exist = await deviceExistsBySn(sn);
+      if (exist) {
+        throw StateError('sn_exists');
+      }
+    }
+    await db.update(
+      'devices',
+      {
+        'sn': sn,
+        'ip': ip,
+        'port': port,
+        'deviceSn': deviceSn,
+      },
+      where: 'sn = ?',
+      whereArgs: [originSn],
+    );
+  }
+
   /// 判断用户是否存在
   static Future<bool> userExists(String username) async {
     final db = await instance();
@@ -471,7 +513,7 @@ class AppDatabase {
     await ensureMonthTable(year, month);
     final table = monthTableName(year, month);
     final res =
-    await db.rawQuery('SELECT MAX(recordTime) AS maxTs FROM ' + table);
+        await db.rawQuery('SELECT MAX(recordTime) AS maxTs FROM ' + table);
     final maxTs = res.isNotEmpty ? res.first['maxTs'] as int? : null;
     if (maxTs != null) {
       return DateTime.fromMillisecondsSinceEpoch(maxTs)
@@ -500,7 +542,7 @@ class AppDatabase {
     );
     if (curRows.isNotEmpty) return curRows.first;
     final prevMonth =
-    DateTime(now.year, now.month, 1).subtract(const Duration(days: 1));
+        DateTime(now.year, now.month, 1).subtract(const Duration(days: 1));
     await ensureMonthTable(prevMonth.year, prevMonth.month);
     final prev = monthTableName(prevMonth.year, prevMonth.month);
     final prevRows = await db.query(
@@ -652,7 +694,7 @@ class AppDatabase {
     }
     // 跨月合并后重新按时间排序
     allResults.sort(
-            (a, b) => (a['recordTime'] as int).compareTo(b['recordTime'] as int));
+        (a, b) => (a['recordTime'] as int).compareTo(b['recordTime'] as int));
     return allResults;
   }
 }

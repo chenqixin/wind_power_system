@@ -24,11 +24,15 @@ import 'package:wind_power_system/core/config/tcp_config.dart';
 import '../content_navigator.dart';
 import 'add_user_dialog.dart';
 import 'add_sn_dialog.dart';
+import 'edit_sn_dialog.dart';
 import 'delete_device_dialog.dart';
 import 'error_alarm_dialog.dart';
 import 'package:wind_power_system/core/utils/fileutils.dart';
 import 'package:wind_power_system/core/utils/print_utils.dart';
 import 'package:wind_power_system/core/utils/power_utils.dart';
+import 'login_dialog.dart';
+import 'package:wind_power_system/core/utils/custom_toast.dart';
+import 'package:wind_power_system/view/notice_dialog.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -437,13 +441,11 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> listenSnError() async {
-
     final mgr = WebSocketManager();
 
     _snErrorSub?.cancel();
 
     _snErrorSub = mgr.devicePushStream.listen((obj) async {
-
       final cmd = obj["cmd"];
 
       if (cmd != "error_detail") return;
@@ -473,10 +475,9 @@ class _HomePageState extends State<HomePage> {
       if (res == true && sn != null) {
         Navigator.pushNamed(context, "/detail", arguments: sn);
       }
-
     });
-
   }
+
   @override
   void dispose() {
     _pollTimer?.cancel();
@@ -518,6 +519,18 @@ class _HomePageState extends State<HomePage> {
                     children: [
                       InkWell(
                         onTap: () async {
+                          if (UserInfo.userName.isEmpty) {
+                            await showDialog(
+                              context: context,
+                              barrierDismissible: true,
+                              builder: (_) => const LoginDialog(),
+                            );
+                            if (UserInfo.userName.isEmpty) return;
+                          }
+                          if (UserInfo.role != 2) {
+                            AppNotice.show(title: '提示', content: '你不是管理员');
+                            return;
+                          }
                           final res = await showDialog(
                             context: context,
                             barrierDismissible: true,
@@ -535,6 +548,14 @@ class _HomePageState extends State<HomePage> {
                             width: 90, height: 42),
                         onTap: () async {
                           //final detail =await getSNDetail("", "",1);
+                          if (UserInfo.userName.isEmpty) {
+                            await showDialog(
+                              context: context,
+                              barrierDismissible: true,
+                              builder: (_) => const LoginDialog(),
+                            );
+                            if (UserInfo.userName.isEmpty) return;
+                          }
                           final res = await showDialog(
                             context: context,
                             barrierDismissible: true,
@@ -574,6 +595,14 @@ class _HomePageState extends State<HomePage> {
                           },
                           child: GestureDetector(
                             onSecondaryTapDown: (details) async {
+                              if (UserInfo.userName.isEmpty) {
+                                await showDialog(
+                                  context: context,
+                                  barrierDismissible: true,
+                                  builder: (_) => const LoginDialog(),
+                                );
+                                if (UserInfo.userName.isEmpty) return;
+                              }
                               final res = await showDialog(
                                 context: context,
                                 barrierDismissible: true,
@@ -587,13 +616,47 @@ class _HomePageState extends State<HomePage> {
                               }
                             },
                             child: InkWell(
-                              onTap: () {
-                                //跳转到详情
-                                ContentNavigator.navigatorKey.currentState!
-                                    .pushNamed(
-                                  '/detail',
-                                  arguments: it.sn,
+                              onLongPress: () async {
+                                if (UserInfo.userName.isEmpty) {
+                                  await showDialog(
+                                    context: context,
+                                    barrierDismissible: true,
+                                    builder: (_) => const LoginDialog(),
+                                  );
+                                  if (UserInfo.userName.isEmpty) return;
+                                }
+                                final res = await showDialog(
+                                  context: context,
+                                  barrierDismissible: true,
+                                  builder: (_) => EditSnDialog(
+                                    originSn: it.sn,
+                                    ip: it.ip,
+                                    port: it.port,
+                                    deviceSn: it.deviceSn,
+                                  ),
                                 );
+                                if (res != null && mounted) {
+                                  _loadItems();
+                                }
+                              },
+                              onTap: () {
+                                () async {
+                                  if (UserInfo.userName.isEmpty) {
+                                    await showDialog(
+                                      context: context,
+                                      barrierDismissible: true,
+                                      builder: (_) => const LoginDialog(),
+                                    );
+                                    if (UserInfo.userName.isEmpty) {
+                                      return;
+                                    }
+                                  }
+                                  ContentNavigator.navigatorKey.currentState!
+                                      .pushNamed(
+                                    '/detail',
+                                    arguments: it.sn,
+                                  );
+                                }();
                               },
                               child: Container(
                                 decoration: BoxDecoration(

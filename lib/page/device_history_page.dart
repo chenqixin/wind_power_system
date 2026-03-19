@@ -546,11 +546,15 @@ class _DeviceHistoryPageState extends State<DeviceHistoryPage> {
                                   const SizedBox(width: 8),
                                   ElevatedButton(
                                     onPressed: () {
+                                      if (UserInfo.role != 2) {
+                                        AIToast.msg('无权限');
+                                        return;
+                                      }
                                       showDialog(
                                         context: context,
                                         barrierDismissible: true,
                                         builder: (_) =>
-                                            ExportDialog(sn: "8888"),//widget.sn
+                                            ExportDialog(sn: widget.sn),
                                       );
                                     },
                                     style: ElevatedButton.styleFrom(

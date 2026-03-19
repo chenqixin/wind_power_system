@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:wind_power_system/page/main_shell_page.dart';
 import 'package:window_manager/window_manager.dart';
+import 'package:screen_retriever/screen_retriever.dart';
+import 'dart:io';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -10,14 +12,33 @@ void main() async {
   await windowManager.ensureInitialized();
 
   // 配置窗口参数
+  const double baseW = 1920;
+  const double baseH = 1280;
+  const double minW = 1280;
+  const double minH = 800;
   WindowOptions windowOptions = const WindowOptions(
     backgroundColor: Colors.transparent,
     skipTaskbar: false,
   );
   windowManager.waitUntilReadyToShow(windowOptions, () async {
+    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+      final display = await screenRetriever.getPrimaryDisplay();
+      final screenW = display.size.width;
+      final screenH = display.size.height;
+      await windowManager.setFullScreen(false);
+      await windowManager.setResizable(true);
+      await windowManager.setMinimumSize(const Size(minW, minH));
+      if (screenW > baseW && screenH > baseH) {
+        await windowManager.setSize(const Size(baseW, baseH));
+      } else {
+        await windowManager.setSize(Size(
+          screenW.clamp(minW, baseW),
+          screenH.clamp(minH, baseH),
+        ));
+      }
+      await windowManager.center();
+    }
     await windowManager.show(); // 显示窗口
-    await windowManager.setFullScreen(true);
-    await windowManager.setResizable(false);
   });
   runApp(const MyApp());
 }
