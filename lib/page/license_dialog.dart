@@ -69,9 +69,8 @@ class _LicenseDialogState extends State<LicenseDialog> {
       final (status, info) = await LicenseValidator.validateFromString(key);
 
       if (status == LicenseStatus.valid) {
-        // 写入 license.dat 到 exe 同级目录
-        final exeDir = File(Platform.resolvedExecutable).parent.path;
-        final licensePath = '$exeDir${Platform.pathSeparator}license.dat';
+        // 写入 license.dat 到 Documents 目录
+        final licensePath = await LicenseValidator.getLicensePath();
         await File(licensePath).writeAsString(key);
 
         if (!mounted) return;

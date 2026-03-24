@@ -9,6 +9,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:encrypt/encrypt.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:pointycastle/asymmetric/api.dart';
 import 'package:wind_power_system/core/utils/print_utils.dart';
 
@@ -37,25 +38,32 @@ enum LicenseStatus {
 class LicenseValidator {
   /// 内嵌公钥 — 构建时替换为实际 public.pem 内容
   static const String _publicKeyPem = '''
------BEGIN PUBLIC KEY-----
-PASTE_YOUR_PUBLIC_KEY_HERE
------END PUBLIC KEY-----
+-----BEGIN RSA PUBLIC KEY-----
+MIIBCgKCAQEAswy+JWR/8ZedhK1SVfNXeb520QPMzFVnHMxPP2I6mhCpVrdLMRx0
+jhZjiw0wGw2mUl7m3UbGDoYdgcoScaABebfHaBalU2RS7XGfwg+Xlf5KyDSQoASF
+fEh1vO3aAQ1iUnQUU0YYEMsEOKEnHhO3ugUO7Voh1oIomWu/ZeRPfzPYhEeQYz65
+nygBvYhT1OaLHVb/gw25dgO3ug0mD7KN5yWH6S4F+cllXw+I6XpFSLu4WcpIXQy+
+R7eIIOO9f1upa78L25/GA6coHikmNuZkl7LU+Meo4ADm39fIrZOHoULUHr5nBEG9
+B4TnPI60HePVxEia2fSuFWHK1CAhvgxhcwIDAQAB
+-----END RSA PUBLIC KEY-----
 ''';
 
-  /// license.dat 的查找路径：优先安装目录（exe 同级），其次 Documents
-  static Future<String?> _findLicenseFile() async {
-    // 1. exe 同级目录（Inno Setup 写入位置）
-    final exeDir = File(Platform.resolvedExecutable).parent.path;
-    final p1 = '$exeDir${Platform.pathSeparator}license.dat';
-    if (await File(p1).exists()) return p1;
+  /// 获取 license.dat 的存储路径（Documents 目录，跨平台可写）
+  static Future<String> getLicensePath() async {
+    final dir = await getApplicationDocumentsDirectory();
+    return '${dir.path}${Platform.pathSeparator}license.dat';
+  }
 
-    // 2. Documents 备用
-    final home = Platform.environment['USERPROFILE'] ??
-        Platform.environment['HOME'] ??
-        '';
-    if (home.isNotEmpty) {
-      final p2 =
-          '$home${Platform.pathSeparator}Documents${Platform.pathSeparator}license.dat';
+  /// license.dat 的查找路径：优先 Documents，其次 exe 同级（Windows Inno Setup 写入位置）
+  static Future<String?> _findLicenseFile() async {
+    // 1. Documents 目录（主路径，macOS/Windows 都可写）
+    final docsPath = await getLicensePath();
+    if (await File(docsPath).exists()) return docsPath;
+
+    // 2. exe 同级目录（Windows Inno Setup 安装时写入的位置）
+    if (Platform.isWindows) {
+      final exeDir = File(Platform.resolvedExecutable).parent.path;
+      final p2 = '$exeDir${Platform.pathSeparator}license.dat';
       if (await File(p2).exists()) return p2;
     }
 
