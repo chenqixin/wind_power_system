@@ -20,6 +20,7 @@ import 'package:wind_power_system/db/app_database.dart';
 import 'package:wind_power_system/model/DeviceDetailData.dart' as model;
 import 'package:wind_power_system/core/utils/power_utils.dart';
 import 'package:wind_power_system/view/notice_dialog.dart';
+import 'package:wind_power_system/page/ota_upgrade_dialog.dart';
 
 class DeviceDetailPage extends StatefulWidget {
   final String sn;
@@ -728,6 +729,11 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
                         value: 'history',
                         child: Text('历史数据').simpleStyle(14, AppColors.blue133),
                       ),
+                      const PopupMenuDivider(),
+                      PopupMenuItem<String>(
+                        value: 'ota',
+                        child: Text('OTA升级').simpleStyle(14, AppColors.blue133),
+                      ),
                     ],
                     onSelected: (value) {
                       switch (value) {
@@ -743,6 +749,21 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
                         case 'history':
                           ContentNavigator.navigatorKey.currentState!
                               .pushNamed('/history', arguments: widget.sn);
+                          break;
+                        case 'ota':
+                          if (_ip != null && _port != null) {
+                            showDialog(
+                              context: context,
+                              barrierDismissible: false,
+                              builder: (_) => OtaUpgradeDialog(
+                                sn: widget.sn,
+                                ip: _ip!,
+                                port: _port!,
+                              ),
+                            );
+                          } else {
+                            AppNotice.show(title: '提示', content: '设备未连接，无法升级');
+                          }
                           break;
                       }
                     },

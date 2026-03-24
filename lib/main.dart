@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:wind_power_system/page/main_shell_page.dart';
+import 'package:wind_power_system/core/license/license_validator.dart';
+import 'package:wind_power_system/page/license_dialog.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:screen_retriever/screen_retriever.dart';
 import 'dart:io';
@@ -70,7 +72,7 @@ class MyApp extends StatelessWidget {
           child: child!,
         );
       },
-      home: MainShellPage(),
+      home: const LicenseGate(),
     );
   }
 
@@ -153,6 +155,70 @@ class MyApp extends StatelessWidget {
         ),
         textStyle: const TextStyle(fontSize: 12, color: Colors.white),
       ),
+    );
+  }
+}
+
+/// 启动时校验 License，通过后进入主页面
+class LicenseGate extends StatefulWidget {
+  const LicenseGate({super.key});
+
+  @override
+  State<LicenseGate> createState() => _LicenseGateState();
+}
+
+class _LicenseGateState extends State<LicenseGate> {
+  bool _checking = true;
+  bool _licensed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkLicense();
+  }
+
+  Future<void> _checkLicense() async {
+    final (status, info) = await LicenseValidator.validate();
+
+    if (status == LicenseStatus.valid) {
+      setState(() {
+        _checking = false;
+        _licensed = true;
+      });
+      return;
+    }
+
+    // 未通过，弹出激活弹窗
+    setState(() => _checking = false);
+
+    if (!mounted) return;
+
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => LicenseDialog(status: status, info: info),
+    );
+
+    if (result == true) {
+      setState(() => _licensed = true);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_checking) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_licensed) {
+      return MainShellPage();
+    }
+
+    // 不应到达这里，LicenseDialog 要么激活成功要么 exit(0)
+    return const Scaffold(
+      body: Center(child: Text('授权校验失败')),
     );
   }
 }

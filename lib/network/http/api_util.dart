@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:wind_power_system/core/utils/print_utils.dart';
 import 'package:wind_power_system/view/notice_dialog.dart';
 import 'package:wind_power_system/network/socket/web_socket_manager.dart';
@@ -169,6 +170,130 @@ class Api {
       }
     } catch (e) {
       print("Switch mode failed: $e");
+    }
+  }
+
+  /// OTA固件升级：握手 → 分包传输 → 完成确认
+  static const int _otaChunkSize = 1024; // 每包1KB，base64后约1.3KB，不超2KB
+
+  static Future<void> otaUpgrade({
+    required String sn,
+    required String ip,
+    required int port,
+    required File file,
+    required String fileName,
+    void Function(double progress, String status)? onProgress,
+  }) async {
+    final bytes = await file.readAsBytes();
+    final totalSize = bytes.length;
+    final totalChunks = (totalSize / _otaChunkSize).ceil();
+
+    recordRequestLog(
+      type: 'OTA Start',
+      sn: sn,
+      ip: ip,
+      port: port,
+      extra: 'file=$fileName, size=$totalSize, chunks=$totalChunks',
+    );
+
+    // 阶段1: 握手 — 通知设备准备接收
+    onProgress?.call(0.0, '正在通知设备准备升级...');
+    final startRes = await WebSocketManager().sendCommand(
+      host: ip,
+      port: port,
+      cmd: 'ota_start',
+      line: 'OTA sn=$sn version=$fileName size=$totalSize chunks=$totalChunks',
+      timeout: const Duration(seconds: 10),
+    );
+    final startCode = startRes['code'];
+    if ((startCode is int ? startCode : int.tryParse('$startCode') ?? 0) != 200) {
+      final msg = startRes['message'] ?? startRes['messge'] ?? '设备拒绝升级';
+      throw Exception('$msg');
+    }
+
+    // 阶段2: 分包传输
+    for (int i = 0; i < totalChunks; i++) {
+      final start = i * _otaChunkSize;
+      final end = (start + _otaChunkSize > totalSize) ? totalSize : start + _otaChunkSize;
+      final chunk = bytes.sublist(start, end);
+      final b64 = base64Encode(chunk);
+
+      onProgress?.call((i + 1) / totalChunks * 0.95, '正在传输 ${i + 1}/$totalChunks ...');
+
+      final dataRes = await WebSocketManager().sendCommand(
+        host: ip,
+        port: port,
+        cmd: 'ota_data',
+        line: 'OTA_DATA index=$i data=$b64',
+        timeout: const Duration(seconds: 10),
+      );
+      final dataCode = dataRes['code'];
+      if ((dataCode is int ? dataCode : int.tryParse('$dataCode') ?? 0) != 200) {
+        final msg = dataRes['message'] ?? dataRes['messge'] ?? '数据包 $i 传输失败';
+        throw Exception('$msg');
+      }
+    }
+
+    // 阶段3: 完成确认
+    onProgress?.call(0.98, '正在等待设备校验...');
+    final finishRes = await WebSocketManager().sendCommand(
+      host: ip,
+      port: port,
+      cmd: 'ota_finish',
+      line: 'OTA_FINISH sn=$sn',
+      timeout: const Duration(seconds: 30),
+    );
+    final finishCode = finishRes['code'];
+    if ((finishCode is int ? finishCode : int.tryParse('$finishCode') ?? 0) != 200) {
+      final msg = finishRes['message'] ?? finishRes['messge'] ?? '设备校验失败';
+      throw Exception('$msg');
+    }
+
+    onProgress?.call(1.0, '升级完成');
+    recordRequestLog(
+      type: 'OTA Complete',
+      sn: sn,
+      ip: ip,
+      port: port,
+      extra: 'file=$fileName',
+    );
+  }
+
+  /// 通知设备修改IP和端口，等待 sn_change_tp 返回成功
+  static Future<bool> changeDeviceIpTcp({
+    required String sn,
+    required String ip,
+    required int port,
+    required String newIp,
+    required int newPort,
+  }) async {
+    recordRequestLog(
+      type: 'Change IP',
+      sn: sn,
+      ip: ip,
+      port: port,
+      extra: 'newIp=$newIp, newPort=$newPort',
+    );
+    try {
+      final res = await WebSocketManager().sendCommand(
+        host: ip,
+        port: port,
+        cmd: 'ip_detail',
+        line: 'IP_change=$newIp port=$newPort sn=$sn',
+      );
+      final rawCode = res['code'];
+      final code = rawCode is int ? rawCode : int.tryParse('$rawCode') ?? 0;
+      return code == 200;
+    } catch (e) {
+      print("Change device IP failed: $e");
+      recordRequestLog(
+        type: 'Change IP Failed',
+        sn: sn,
+        ip: ip,
+        port: port,
+        extra: 'Error: $e',
+      );
+      return false;
     }
   }
 

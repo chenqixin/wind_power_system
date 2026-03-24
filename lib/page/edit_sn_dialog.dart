@@ -6,6 +6,7 @@ import 'package:wind_power_system/core/constant/app_constant.dart';
 import 'package:wind_power_system/genernal/extension/text.dart';
 import 'package:wind_power_system/view/notice_dialog.dart';
 import 'package:wind_power_system/db/app_database.dart';
+import 'package:wind_power_system/network/http/api_util.dart';
 
 class EditSnDialog extends StatefulWidget {
   final String originSn;
@@ -216,6 +217,21 @@ class _EditSnDialogState extends State<EditSnDialog> {
       return;
     }
 
+    // 先通过TCP通知设备修改IP和端口，等待 sn_change_tp 返回成功
+    final success = await Api.changeDeviceIpTcp(
+      sn: turbineNo,
+      ip: widget.ip,
+      port: widget.port,
+      newIp: ip,
+      newPort: port,
+    );
+
+    if (!success) {
+      AppNotice.show(title: '提示', content: '设备通信失败，请检查网络连接');
+      return;
+    }
+
+    // TCP返回成功后，再更新数据库
     try {
       await AppDatabase.updateDevice(
         originSn: widget.originSn,
