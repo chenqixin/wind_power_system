@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:wind_power_system/view/notice_dialog.dart';
 import 'package:wind_power_system/core/utils/print_utils.dart';
@@ -161,6 +162,36 @@ class DeviceConnection {
     return completer.future.timeout(timeout, onTimeout: () {
       _pending.remove(cmd);
 
+      throw Exception("timeout $cmd");
+    });
+  }
+
+  /// 发送文本头 + 原始二进制数据（用于 OTA 等场景）
+  Future<dynamic> sendBinary(
+    String cmd,
+    String header,
+    Uint8List binary, {
+    Duration timeout = const Duration(seconds: 5),
+  }) {
+    if (!connected || _socket == null) {
+      throw Exception("device not connected");
+    }
+
+    final completer = Completer();
+
+    _pending[cmd] = completer;
+
+    // 将文本头和二进制数据合并为一次写入，避免 tcpNoDelay 下拆成两个包
+    final headerBytes = utf8.encode("$header\n");
+    final combined = Uint8List(headerBytes.length + binary.length);
+    combined.setRange(0, headerBytes.length, headerBytes);
+    combined.setRange(headerBytes.length, combined.length, binary);
+    _socket!.add(combined);
+
+    touch();
+
+    return completer.future.timeout(timeout, onTimeout: () {
+      _pending.remove(cmd);
       throw Exception("timeout $cmd");
     });
   }

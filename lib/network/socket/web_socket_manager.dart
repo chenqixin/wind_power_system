@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:wind_power_system/view/notice_dialog.dart';
 import 'package:wind_power_system/core/utils/print_utils.dart';
@@ -64,6 +65,19 @@ class WebSocketManager {
   }) async {
     final conn = await getConnection(host, port);
     return conn.send(cmd, line, timeout: timeout);
+  }
+
+  /// 发送文本头 + 原始二进制数据
+  Future<dynamic> sendBinaryCommand({
+    required String host,
+    required int port,
+    required String cmd,
+    required String header,
+    required Uint8List binary,
+    Duration timeout = const Duration(seconds: 5),
+  }) async {
+    final conn = await getConnection(host, port);
+    return conn.sendBinary(cmd, header, binary, timeout: timeout);
   }
 
   Future<void> sendCommandNoWait({

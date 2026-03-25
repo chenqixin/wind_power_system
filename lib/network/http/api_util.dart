@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 import 'package:wind_power_system/core/utils/print_utils.dart';
 import 'package:wind_power_system/view/notice_dialog.dart';
@@ -174,7 +173,7 @@ class Api {
   }
 
   /// OTA固件升级：握手 → 分包传输 → 完成确认
-  static const int _otaChunkSize = 1024; // 每包1KB，base64后约1.3KB，不超2KB
+  static const int _otaChunkSize = 1024; // 每包1KB，直接传原始字节
 
   static Future<void> otaUpgrade({
     required String sn,
@@ -216,15 +215,15 @@ class Api {
       final start = i * _otaChunkSize;
       final end = (start + _otaChunkSize > totalSize) ? totalSize : start + _otaChunkSize;
       final chunk = bytes.sublist(start, end);
-      final b64 = base64Encode(chunk);
 
       onProgress?.call((i + 1) / totalChunks * 0.95, '正在传输 ${i + 1}/$totalChunks ...');
 
-      final dataRes = await WebSocketManager().sendCommand(
+      final dataRes = await WebSocketManager().sendBinaryCommand(
         host: ip,
         port: port,
         cmd: 'ota_data',
-        line: 'OTA_DATA index=$i data=$b64',
+        header: 'OTA_DATA index=$i size=${chunk.length}',
+        binary: chunk,
         timeout: const Duration(seconds: 10),
       );
       final dataCode = dataRes['code'];
