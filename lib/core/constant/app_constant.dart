@@ -7,6 +7,10 @@ class AppConstant {
 
   static AppConstant get shared => _shared ??= AppConstant();
 
+  /// true: 正式环境，数据库存放在系统应用数据目录（用户不可见）
+  /// false: 测试环境，数据库存放在"文档"目录（方便查看调试）
+  static const bool isRelease = false;
+
   /// 保存内容上下文
   late BuildContext context;
 

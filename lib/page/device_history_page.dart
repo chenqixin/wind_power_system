@@ -489,7 +489,7 @@ class _DeviceHistoryPageState extends State<DeviceHistoryPage> {
                                             AppColors.blue133.withOpacity(0.6)),
                                   ),
                                   const Spacer(),
-                                  ElevatedButton(
+                                  Visibility(visible:false,child: ElevatedButton(
                                     onPressed: () async {
                                       // showDialog(
                                       //   context: context,
@@ -523,7 +523,7 @@ class _DeviceHistoryPageState extends State<DeviceHistoryPage> {
                                         style: TextStyle(
                                             fontSize: 16,
                                             fontWeight: FontWeight.w500)),
-                                  ),
+                                  )),
                                   const SizedBox(width: 8),
                                   ElevatedButton(
                                     onPressed: () {

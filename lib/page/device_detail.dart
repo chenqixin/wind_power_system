@@ -1658,8 +1658,8 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
                                                   rows;
                                               final ratio = itemW / itemH;
                                               final tiles = [
-                                                '主控程序版本号：',
-                                                '环网上位机版本号：',
+                                                '加热版本号：',
+                                                '测冰设备版本号：',
                                                 '测冰系统版本号：',
                                               ];
                                               return GridView.count(
@@ -1694,10 +1694,13 @@ class _DeviceDetailPageState extends State<DeviceDetailPage>
                                                                     AppColors
                                                                         .blue133),
                                                                 Spacer(),
-                                                                Text(tiles.indexOf(t) ==
-                                                                            1
-                                                                        ? 'ZK_95'
-                                                                        : 'ZK_9527_01')
+                                                                Text(tiles.indexOf(t) == 0
+                                                                    ? detail?.state?.verisonHot ??
+                                                                        "-"
+                                                                    : (tiles.indexOf(t) == 1
+                                                                        ? detail?.state?.verisonIce ??
+                                                                            "-"
+                                                                        : "1.0.0"))
                                                                     .simpleStyle(
                                                                         12,
                                                                         AppColors

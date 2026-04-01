@@ -7,6 +7,10 @@ import 'table/divices_tab.dart';
 import 'table/sensor_history_data.dart';
 import 'table/users_table.dart';
 import 'package:wind_power_system/model/DeviceDetailData.dart';
+import 'package:wind_power_system/core/constant/app_constant.dart';
+
+/// 当前数据库 Schema 版本号，每次有表结构变动时递增
+const int kSchemaVersion = 1;
 
 /// 应用数据库工具类
 /// 负责数据库初始化、表结构保证、数据插入与查询工具方法
@@ -19,18 +23,218 @@ class AppDatabase {
     if (_db != null) return _db!;
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
-    final Directory dir = Platform.isWindows
-        ? Directory('C:/Users/${Platform.environment['USERNAME']}/Documents')
-        : await getApplicationDocumentsDirectory();
+
+    final Directory dir;
+    if (AppConstant.isRelease) {
+      // 正式环境：存放在系统应用数据目录，用户不易误删
+      // macOS: ~/Library/Application Support/
+      // Windows: C:\Users\{USERNAME}\AppData\Roaming\
+      // Linux: ~/.local/share/
+      dir = await getApplicationSupportDirectory();
+    } else {
+      // 测试环境：存放在"文档"目录，方便开发者查看调试
+      dir = Platform.isWindows
+          ? Directory(
+              'C:/Users/${Platform.environment['USERNAME']}/Documents')
+          : await getApplicationDocumentsDirectory();
+    }
+
     final path = p.join(dir.path, 'window_app.db');
     _db = await databaseFactory.openDatabase(path);
-    await _ensureDeviceTable();
-    await ensureUserTable();
+    await _runMigrations();
     await _ensureDefaultAdmin();
     return _db!;
   }
 
-  /// 确保设备表 `devices` 存在，并按需迁移缺失列
+  // ===========================================================================
+  // 数据库版本迁移
+  // ===========================================================================
+
+  /// 读取当前版本号，逐版本执行迁移，仅在 App 启动时运行一次
+  static Future<void> _runMigrations() async {
+    final db = _db!;
+    await db.execute(
+      'CREATE TABLE IF NOT EXISTS _meta (key TEXT PRIMARY KEY, value TEXT)',
+    );
+    final rows = await db.rawQuery(
+      "SELECT value FROM _meta WHERE key = 'schema_version'",
+    );
+    final oldVersion =
+        rows.isEmpty ? 0 : int.parse(rows.first['value'] as String);
+    if (oldVersion >= kSchemaVersion) return;
+    for (int v = oldVersion + 1; v <= kSchemaVersion; v++) {
+      await _applyMigration(db, v);
+    }
+    await db.execute(
+      "INSERT OR REPLACE INTO _meta (key, value) "
+      "VALUES ('schema_version', '$kSchemaVersion')",
+    );
+  }
+
+  /// 按版本号执行对应的迁移操作。
+  /// 未来新增字段时：递增 [kSchemaVersion]，添加新的 case，
+  /// 把新列同时加到 [sensorHistoryCreateSql] / 建表 SQL 中即可。
+  static Future<void> _applyMigration(Database db, int version) async {
+    switch (version) {
+      case 1:
+        // v1: 基线 — 确保所有表和列与当前 schema 一致
+        // devices 表
+        final devRes = await db.rawQuery(
+          "SELECT name FROM sqlite_master WHERE type='table' AND name='devices'",
+        );
+        if (devRes.isEmpty) {
+          await db.execute(devicesCreateSql('devices'));
+        } else {
+          await _addColumnsIfMissing(db, 'devices', _deviceColumnsV1);
+        }
+        // users 表
+        final usrRes = await db.rawQuery(
+          "SELECT name FROM sqlite_master WHERE type='table' AND name='users'",
+        );
+        if (usrRes.isEmpty) {
+          await db.execute(usersCreateSql('users'));
+        }
+        // 已有的月分表批量补齐列和索引
+        await _migrateExistingMonthTables(db, _historyColumnsV1);
+        break;
+      // ---- 未来版本示例 ----
+      // case 2:
+      //   await _addColumnsIfMissing(db, 'users', [MapEntry('email', 'TEXT')]);
+      //   await _addColumnsIfMissing(db, 'devices', [MapEntry('alias', 'TEXT')]);
+      //   await _migrateExistingMonthTables(db, _historyColumnsV2);
+      //   break;
+    }
+  }
+
+  /// 批量给指定表安全添加缺失列（先读一次 PRAGMA，再逐列判断）
+  static Future<void> _addColumnsIfMissing(
+    Database db,
+    String table,
+    List<MapEntry<String, String>> columns,
+  ) async {
+    final info = await db.rawQuery('PRAGMA table_info($table)');
+    final existing = info.map((e) => e['name'] as String).toSet();
+    for (final col in columns) {
+      if (!existing.contains(col.key)) {
+        await db.execute(
+            'ALTER TABLE $table ADD COLUMN ${col.key} ${col.value}');
+      }
+    }
+  }
+
+  /// 扫描所有已存在的 history_YYYY_MM 月分表，批量补齐缺失列与索引
+  static Future<void> _migrateExistingMonthTables(
+    Database db,
+    List<MapEntry<String, String>> columns,
+  ) async {
+    final tables = await db.rawQuery(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'history_%'",
+    );
+    for (final row in tables) {
+      final table = row['name'] as String;
+      await _addColumnsIfMissing(db, table, columns);
+      await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_${table}_sn_time ON $table (sn, recordTime)');
+      await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_${table}_sn ON $table (sn)');
+    }
+  }
+
+  // ---- 各版本列定义（仅用于迁移老数据库） ----
+
+  static const _deviceColumnsV1 = <MapEntry<String, String>>[
+    MapEntry('ip', 'TEXT'),
+    MapEntry('port', 'INTEGER'),
+    MapEntry('deviceSn', 'TEXT'),
+  ];
+
+  static const _historyColumnsV1 = <MapEntry<String, String>>[
+    MapEntry('payload', 'TEXT NULL'),
+    MapEntry('deviceId', 'TEXT NULL'),
+    MapEntry('verisonHot', 'TEXT NULL'),
+    MapEntry('verisonIce', 'TEXT NULL'),
+    MapEntry('aI', 'REAL NULL'),
+    MapEntry('bI', 'REAL NULL'),
+    MapEntry('cI', 'REAL NULL'),
+    MapEntry('aV', 'REAL NULL'),
+    MapEntry('bV', 'REAL NULL'),
+    MapEntry('cV', 'REAL NULL'),
+    MapEntry('cmd', 'INTEGER NULL'),
+    MapEntry('tcpIp', 'TEXT NULL'),
+    MapEntry('envTemp', 'REAL NULL'),
+    MapEntry('envHumidity', 'REAL NULL'),
+    MapEntry('errorStop', 'INTEGER NULL'),
+    MapEntry('restFlag', 'INTEGER NULL'),
+    MapEntry('envHot', 'INTEGER NULL'),
+    MapEntry('hotAll', 'INTEGER NULL'),
+    MapEntry('ctrlMode', 'INTEGER NULL'),
+    MapEntry('windSpeed', 'REAL NULL'),
+    MapEntry('rotorSpeed', 'REAL NULL'),
+    MapEntry('iceState', 'INTEGER NULL'),
+    MapEntry('hotState1', 'INTEGER NULL'),
+    MapEntry('hotState2', 'INTEGER NULL'),
+    MapEntry('hotState3', 'INTEGER NULL'),
+    MapEntry('hotState4', 'INTEGER NULL'),
+    MapEntry('hotTime', 'INTEGER NULL'),
+    MapEntry('iSet', 'REAL NULL'),
+    MapEntry('temperature', 'REAL NULL'),
+    MapEntry('power', 'REAL NULL'),
+    // Blade 1
+    MapEntry('b1_temp_up', 'REAL NULL'),
+    MapEntry('b1_temp_mid', 'REAL NULL'),
+    MapEntry('b1_temp_down', 'REAL NULL'),
+    MapEntry('b1_tick_up', 'REAL NULL'),
+    MapEntry('b1_tick_mid', 'REAL NULL'),
+    MapEntry('b1_tick_down', 'REAL NULL'),
+    MapEntry('b1_run_up', 'INTEGER NULL'),
+    MapEntry('b1_run_mid', 'INTEGER NULL'),
+    MapEntry('b1_run_down', 'INTEGER NULL'),
+    MapEntry('b1_i', 'REAL NULL'),
+    MapEntry('b1_v', 'REAL NULL'),
+    // Blade 2
+    MapEntry('b2_temp_up', 'REAL NULL'),
+    MapEntry('b2_temp_mid', 'REAL NULL'),
+    MapEntry('b2_temp_down', 'REAL NULL'),
+    MapEntry('b2_tick_up', 'REAL NULL'),
+    MapEntry('b2_tick_mid', 'REAL NULL'),
+    MapEntry('b2_tick_down', 'REAL NULL'),
+    MapEntry('b2_run_up', 'INTEGER NULL'),
+    MapEntry('b2_run_mid', 'INTEGER NULL'),
+    MapEntry('b2_run_down', 'INTEGER NULL'),
+    MapEntry('b2_i', 'REAL NULL'),
+    MapEntry('b2_v', 'REAL NULL'),
+    // Blade 3
+    MapEntry('b3_temp_up', 'REAL NULL'),
+    MapEntry('b3_temp_mid', 'REAL NULL'),
+    MapEntry('b3_temp_down', 'REAL NULL'),
+    MapEntry('b3_tick_up', 'REAL NULL'),
+    MapEntry('b3_tick_mid', 'REAL NULL'),
+    MapEntry('b3_tick_down', 'REAL NULL'),
+    MapEntry('b3_run_up', 'INTEGER NULL'),
+    MapEntry('b3_run_mid', 'INTEGER NULL'),
+    MapEntry('b3_run_down', 'INTEGER NULL'),
+    MapEntry('b3_i', 'REAL NULL'),
+    MapEntry('b3_v', 'REAL NULL'),
+    // Faults
+    MapEntry('faultRing', 'INTEGER NULL'),
+    MapEntry('faultUps', 'INTEGER NULL'),
+    MapEntry('faultTestCom', 'INTEGER NULL'),
+    MapEntry('faultIavg', 'INTEGER NULL'),
+    MapEntry('faultContactor', 'INTEGER NULL'),
+    MapEntry('faultStick', 'INTEGER NULL'),
+    MapEntry('faultStickBlade1', 'INTEGER NULL'),
+    MapEntry('faultStickBlade2', 'INTEGER NULL'),
+    MapEntry('faultStickBlade3', 'INTEGER NULL'),
+    MapEntry('faultBlade1', 'INTEGER NULL'),
+    MapEntry('faultBlade2', 'INTEGER NULL'),
+    MapEntry('faultBlade3', 'INTEGER NULL'),
+  ];
+
+  // ===========================================================================
+  // 表辅助方法
+  // ===========================================================================
+
+  /// 确保设备表存在（仅建表，列迁移由 [_runMigrations] 统一处理）
   static Future<void> _ensureDeviceTable() async {
     final db = await instance();
     final res = await db.rawQuery(
@@ -38,18 +242,6 @@ class AppDatabase {
         ['devices']);
     if (res.isEmpty) {
       await db.execute(devicesCreateSql('devices'));
-    }
-    // migrate columns if missing
-    final info = await db.rawQuery('PRAGMA table_info(devices)');
-    final cols = info.map((e) => e['name'] as String).toSet();
-    if (!cols.contains('ip')) {
-      await db.execute('ALTER TABLE devices ADD COLUMN ip TEXT');
-    }
-    if (!cols.contains('port')) {
-      await db.execute('ALTER TABLE devices ADD COLUMN port INTEGER');
-    }
-    if (!cols.contains('deviceSn')) {
-      await db.execute('ALTER TABLE devices ADD COLUMN deviceSn TEXT');
     }
   }
 
@@ -59,7 +251,7 @@ class AppDatabase {
     return 'history_${year}_$mm';
   }
 
-  /// 确保指定年月的历史分表存在，并按需补齐缺失列与索引
+  /// 确保指定年月的历史分表存在（新表直接使用最新完整 schema 建表）
   static Future<void> ensureMonthTable(int year, int month) async {
     final db = await instance();
     final table = monthTableName(year, month);
@@ -68,204 +260,13 @@ class AppDatabase {
         [table]);
     if (res.isEmpty) {
       await db.execute(sensorHistoryCreateSql(table));
-    }
-    // migrate columns if missing
-    final info = await db.rawQuery('PRAGMA table_info(' + table + ')');
-    final cols = info.map((e) => e['name'] as String).toSet();
-    if (!cols.contains('payload')) {
-      await db
-          .execute('ALTER TABLE ' + table + ' ADD COLUMN payload TEXT NULL');
-    }
-    if (!cols.contains('deviceId')) {
-      await db
-          .execute('ALTER TABLE ' + table + ' ADD COLUMN deviceId TEXT NULL');
-    }
-    if (!cols.contains('verisonHot')) {
-      await db
-          .execute('ALTER TABLE ' + table + ' ADD COLUMN verisonHot TEXT NULL');
-    }
-    if (!cols.contains('verisonIce')) {
-      await db
-          .execute('ALTER TABLE ' + table + ' ADD COLUMN verisonIce TEXT NULL');
-    }
-    if (!cols.contains('aI')) {
-      await db.execute('ALTER TABLE ' + table + ' ADD COLUMN aI REAL NULL');
-    }
-    if (!cols.contains('bI')) {
-      await db.execute('ALTER TABLE ' + table + ' ADD COLUMN bI REAL NULL');
-    }
-    if (!cols.contains('cI')) {
-      await db.execute('ALTER TABLE ' + table + ' ADD COLUMN cI REAL NULL');
-    }
-    if (!cols.contains('aV')) {
-      await db.execute('ALTER TABLE ' + table + ' ADD COLUMN aV REAL NULL');
-    }
-    if (!cols.contains('bV')) {
-      await db.execute('ALTER TABLE ' + table + ' ADD COLUMN bV REAL NULL');
-    }
-    if (!cols.contains('cV')) {
-      await db.execute('ALTER TABLE ' + table + ' ADD COLUMN cV REAL NULL');
-    }
-    if (!cols.contains('cmd')) {
-      await db.execute('ALTER TABLE ' + table + ' ADD COLUMN cmd INTEGER NULL');
-    }
-    if (!cols.contains('tcpIp')) {
-      await db.execute('ALTER TABLE ' + table + ' ADD COLUMN tcpIp TEXT NULL');
-    }
-    if (!cols.contains('envTemp')) {
-      await db
-          .execute('ALTER TABLE ' + table + ' ADD COLUMN envTemp REAL NULL');
-    }
-    if (!cols.contains('envHumidity')) {
       await db.execute(
-          'ALTER TABLE ' + table + ' ADD COLUMN envHumidity REAL NULL');
-    }
-    if (!cols.contains('errorStop')) {
+          'CREATE INDEX IF NOT EXISTS idx_${table}_sn_time ON $table (sn, recordTime)');
       await db.execute(
-          'ALTER TABLE ' + table + ' ADD COLUMN errorStop INTEGER NULL');
+          'CREATE INDEX IF NOT EXISTS idx_${table}_sn ON $table (sn)');
     }
-    if (!cols.contains('restFlag')) {
-      await db.execute(
-          'ALTER TABLE ' + table + ' ADD COLUMN restFlag INTEGER NULL');
-    }
-    if (!cols.contains('envHot')) {
-      await db
-          .execute('ALTER TABLE ' + table + ' ADD COLUMN envHot INTEGER NULL');
-    }
-    if (!cols.contains('hotAll')) {
-      await db
-          .execute('ALTER TABLE ' + table + ' ADD COLUMN hotAll INTEGER NULL');
-    }
-    if (!cols.contains('ctrlMode')) {
-      await db.execute(
-          'ALTER TABLE ' + table + ' ADD COLUMN ctrlMode INTEGER NULL');
-    }
-    if (!cols.contains('windSpeed')) {
-      await db
-          .execute('ALTER TABLE ' + table + ' ADD COLUMN windSpeed REAL NULL');
-    }
-    if (!cols.contains('rotorSpeed')) {
-      await db
-          .execute('ALTER TABLE ' + table + ' ADD COLUMN rotorSpeed REAL NULL');
-    }
-    if (!cols.contains('iceState')) {
-      await db.execute(
-          'ALTER TABLE ' + table + ' ADD COLUMN iceState INTEGER NULL');
-    }
-    if (!cols.contains('hotState1')) {
-      await db.execute(
-          'ALTER TABLE ' + table + ' ADD COLUMN hotState1 INTEGER NULL');
-    }
-    if (!cols.contains('hotState2')) {
-      await db.execute(
-          'ALTER TABLE ' + table + ' ADD COLUMN hotState2 INTEGER NULL');
-    }
-    if (!cols.contains('hotState3')) {
-      await db.execute(
-          'ALTER TABLE ' + table + ' ADD COLUMN hotState3 INTEGER NULL');
-    }
-    if (!cols.contains('hotState4')) {
-      await db.execute(
-          'ALTER TABLE ' + table + ' ADD COLUMN hotState4 INTEGER NULL');
-    }
-    if (!cols.contains('hotTime')) {
-      await db
-          .execute('ALTER TABLE ' + table + ' ADD COLUMN hotTime INTEGER NULL');
-    }
-    if (!cols.contains('iSet')) {
-      await db.execute('ALTER TABLE ' + table + ' ADD COLUMN iSet REAL NULL');
-    }
-    if (!cols.contains('temperature')) {
-      await db.execute(
-          'ALTER TABLE ' + table + ' ADD COLUMN temperature REAL NULL');
-    }
-    if (!cols.contains('power')) {
-      await db.execute('ALTER TABLE ' + table + ' ADD COLUMN power REAL NULL');
-    }
-    // Winddata flattened columns
-    const blades = ['b1', 'b2', 'b3'];
-    const tempKeys = ['temp_up', 'temp_mid', 'temp_down'];
-    const tickKeys = ['tick_up', 'tick_mid', 'tick_down'];
-    const runKeys = ['run_up', 'run_mid', 'run_down'];
-    for (final b in blades) {
-      for (final k in tempKeys) {
-        final c = b + '_' + k.replaceAll('_', '_');
-        if (!cols.contains('$b\_${k}')) {
-          await db.execute('ALTER TABLE ' +
-              table +
-              ' ADD COLUMN ' +
-              b +
-              '_' +
-              k +
-              ' REAL NULL');
-        }
-      }
-      for (final k in tickKeys) {
-        if (!cols.contains('$b\_${k}')) {
-          await db.execute('ALTER TABLE ' +
-              table +
-              ' ADD COLUMN ' +
-              b +
-              '_' +
-              k +
-              ' REAL NULL');
-        }
-      }
-      for (final k in runKeys) {
-        if (!cols.contains('$b\_${k}')) {
-          await db.execute('ALTER TABLE ' +
-              table +
-              ' ADD COLUMN ' +
-              b +
-              '_' +
-              k +
-              ' INTEGER NULL');
-        }
-      }
-      if (!cols.contains('$b\_i')) {
-        await db.execute(
-            'ALTER TABLE ' + table + ' ADD COLUMN ' + b + '_i REAL NULL');
-      }
-      if (!cols.contains('$b\_v')) {
-        await db.execute(
-            'ALTER TABLE ' + table + ' ADD COLUMN ' + b + '_v REAL NULL');
-      }
-    }
-    // Fault columns migration
-    final faultCols = [
-      'faultRing',
-      'faultUps',
-      'faultTestCom',
-      'faultIavg',
-      'faultContactor',
-      'faultStick',
-      'faultStickBlade1',
-      'faultStickBlade2',
-      'faultStickBlade3',
-      'faultBlade1',
-      'faultBlade2',
-      'faultBlade3'
-    ];
-    for (final fault in faultCols) {
-      if (!cols.contains(fault)) {
-        await db.execute(
-            'ALTER TABLE ' + table + ' ADD COLUMN ' + fault + ' INTEGER NULL');
-      }
-    }
-    // indexes
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_' +
-        table +
-        '_sn_time ON ' +
-        table +
-        ' (sn, recordTime)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_' +
-        table +
-        '_sn ON ' +
-        table +
-        ' (sn)');
   }
 
-  // 用户表
   /// 确保用户表 `users` 存在
   static Future<void> ensureUserTable() async {
     final db = await instance();
@@ -289,6 +290,11 @@ class AppDatabase {
       phone: '17366621184',
     );
   }
+
+  // ===========================================================================
+  // 业务方法
+  // ===========================================================================
+
   //
   // static Future<void> createDevices(int count) async {
   //   final db = await instance();
